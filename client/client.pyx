@@ -1,16 +1,34 @@
 from libc.stdlib cimport malloc
 from libc.string cimport strcpy, strlen
+import socket
+import random
+
+connection_sockets = []
+primary_server = -1 # TODO: Handle failover
 
 cdef public int kv739_init(char **servers, int num_servers):
     # TODO: Implement
     cdef char **srvs = servers
     cdef int i
+
+    # Establish socket connection to each of the servers
     for i in range (0,num_servers):
-        print (srvs[i])
-    return -1
+        print ("Establishing connection to " + srvs[i])
+        server = srvs[i]
+        connection_sockets.append(socket.socket())
+        try:
+            connection_sockets[i].connect((server.split(":")[0], int(server.split(":")[1])))
+        except socket.error, exc:
+            print "Caught exception socket.error : %s" % exc
+            # TODO: cleanup
+            return -1
+    
+    # Pick one server to communicate to as a primary. We fallback to secondaries only in event of failure
+    primary_server = random.randint(0, len(connection_sockets)-1)
+    return 0
 
 cdef public int kv739_shutdown():
-    # TODO: Implement
+    # TODO: Implement. Close all connections and cleanup
     return -1
 
 cdef public int kv739_get(char * key, char * value):
@@ -27,7 +45,13 @@ cdef public int kv739_put(char * key, char * value, char * old_value):
 
 def getValueForKey(key):
     # TODO: Implement
-    return "Arjun"
+    # Attempt to send request to primary server
+
+    # TODO: Error handling and failover
+    connection_sockets[primary_server].send('Here I am!') 
+    connection_sockets[primary_server].send('')
+    valueFromServer = connection_sockets[primary_server].recv(2048)
+    return valueFromServer
 
 def setValueForKey(key,value):
     return "Danish"
