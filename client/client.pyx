@@ -2,6 +2,7 @@ from libc.stdlib cimport malloc
 from libc.string cimport strcpy, strlen
 import socket
 import random
+import json
 
 connection_sockets = []
 primary_server = -1 # TODO: Handle failover
@@ -44,14 +45,27 @@ cdef public int kv739_put(char * key, char * value, char * old_value):
     return -1
 
 def getValueForKey(key):
+    data = {}
+    data['operation'] = 'GET'
+    data['key'] = key
+    json_data = json.dumps(data)
     # TODO: Implement
     # Attempt to send request to primary server
 
     # TODO: Error handling and failover
-    connection_sockets[primary_server].send('Here I am!') 
-    connection_sockets[primary_server].send('')
+    print('Sending...')
+    connection_sockets[primary_server].sendall(json_data + "\n") 
+    print('Sent...')
+    # connection_sockets[primary_server].send('')
     valueFromServer = connection_sockets[primary_server].recv(2048)
     return valueFromServer
 
 def setValueForKey(key,value):
-    return "Danish"
+    data = {}
+    data['operation'] = 'PUT'
+    data['key'] = key
+    data['value'] = value
+    json_data = json.dumps(data)
+    connection_sockets[primary_server].sendall(json_data + "\n")
+    valueFromServer = connection_sockets[primary_server].recv(2048)
+    return valueFromServer

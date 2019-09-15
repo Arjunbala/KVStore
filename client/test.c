@@ -27,10 +27,13 @@ int main()
     char *val;
 
     val = (char*) malloc(MAX_VAL_SIZE * sizeof(char));
-    ret = kv739_get("abc", val);
+    ret = kv739_get("100", val);
     printf("%s\n", val);
 
-    ret = kv739_put("abc", "def", val);
+    ret = kv739_put("100", "danish", val);
+    printf("%s\n", val);
+
+    ret = kv739_get("100", val);
     printf("%s\n", val);
 
     Py_Finalize();

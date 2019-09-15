@@ -8,6 +8,8 @@ import java.util.concurrent.Executors;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.*;
+import com.google.gson.*;
 
 public class KeyValueServer {
 	public static void main(String[] args) throws IOException {
@@ -15,18 +17,22 @@ public class KeyValueServer {
 				0, InetAddress.getByName("127.0.0.1"))) {
 			System.out.println("The key value server is running...");
 			ExecutorService pool = Executors.newFixedThreadPool(20);
-			
+			ConcurrentHashMap m = new ConcurrentHashMap();
+      m.put("100", "Danish");
+      m.put("200", "Arjun");
+      m.put("300", "Danny");
 			while (true) {
-                pool.execute(new ClientRequestHandler(listener.accept()));
+                pool.execute(new ClientRequestHandler(listener.accept(), m));
             }
 		}
 	}
 	
 	private static class ClientRequestHandler implements Runnable {
         private Socket socket;
-
-        ClientRequestHandler(Socket socket) {
+        private ConcurrentHashMap m;
+        ClientRequestHandler(Socket socket, ConcurrentHashMap m) {
             this.socket = socket;
+            this.m = m;
         }
 
 		@Override
@@ -46,8 +52,23 @@ public class KeyValueServer {
 				e.printStackTrace();
 			}
 			while (in.hasNextLine()) {
-				System.out.println("Client Request: " + in.nextLine());
-				out.println("Arjun Server");
+        String request = in.nextLine();
+				System.out.println("Client Request: " + request);
+        JsonObject jsonObject = new JsonParser().parse(request).getAsJsonObject();
+        String operation = jsonObject.get("operation").getAsString();
+        if (operation.equals("GET")) {
+          String key = jsonObject.get("key").getAsString();
+				  out.println(m.get(key));
+        } else if (operation.equals("PUT")) {
+          String key = jsonObject.get("key").getAsString();
+          String value = jsonObject.get("value").getAsString();
+          String oldValue = "";
+          if (m.containsKey(key)) {
+            oldValue = (String)m.get(key);
+          }
+          m.put(key, value);
+          out.println(oldValue);
+        }
 			}
 			in.close();
 			out.close();
