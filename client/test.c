@@ -28,13 +28,22 @@ int main()
 
     val = (char*) malloc(MAX_VAL_SIZE * sizeof(char));
     ret = kv739_get("100", val);
-    printf("%s\n", val);
+    printf("GET %s\n", val);
 
     ret = kv739_put("100", "danish", val);
-    printf("%s\n", val);
+    printf("PUT OLD=%s\n", val);
 
     ret = kv739_get("100", val);
-    printf("%s\n", val);
+    printf("GET %s\n", val);
+
+    ret = kv739_get("200", val);
+    printf("GET %s\n", val);
+
+    ret = kv739_put("200", "arjun", val);
+    printf("PUT OLD=%s\n", val);
+
+    ret = kv739_get("200", val);
+    printf("GET %s\n", val);
 
     Py_Finalize();
     return 0;

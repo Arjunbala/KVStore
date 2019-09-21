@@ -9,31 +9,39 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.*;
+
+import com.cs739.kvstore.datastore.DataStore;
+import com.cs739.kvstore.datastore.DataStoreFactory;
 import com.google.gson.*;
 
 public class KeyValueServer {
+
+	static DataStore mDataStore = null;
+
 	public static void main(String[] args) throws IOException {
+		mDataStore = DataStoreFactory.getDataStore(Integer.parseInt(args[0]));
 		try (ServerSocket listener = new ServerSocket(Integer.parseInt(args[0]),
 				0, InetAddress.getByName("127.0.0.1"))) {
 			System.out.println("The key value server is running...");
 			ExecutorService pool = Executors.newFixedThreadPool(20);
 			ConcurrentHashMap m = new ConcurrentHashMap();
-      m.put("100", "Danish");
-      m.put("200", "Arjun");
-      m.put("300", "Danny");
+			m.put("100", "Danish");
+			m.put("200", "Arjun");
+			m.put("300", "Danny");
 			while (true) {
-                pool.execute(new ClientRequestHandler(listener.accept(), m));
-            }
+				pool.execute(new ClientRequestHandler(listener.accept(), m));
+			}
 		}
 	}
-	
+
 	private static class ClientRequestHandler implements Runnable {
-        private Socket socket;
-        private ConcurrentHashMap m;
-        ClientRequestHandler(Socket socket, ConcurrentHashMap m) {
-            this.socket = socket;
-            this.m = m;
-        }
+		private Socket socket;
+		private ConcurrentHashMap m;
+
+		ClientRequestHandler(Socket socket, ConcurrentHashMap m) {
+			this.socket = socket;
+			this.m = m;
+		}
 
 		@Override
 		public void run() {
@@ -46,29 +54,35 @@ public class KeyValueServer {
 			}
 			PrintWriter out = null;
 			try {
-				out = new PrintWriter(socket.getOutputStream(),
-						true);
+				out = new PrintWriter(socket.getOutputStream(), true);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			while (in.hasNextLine()) {
-        String request = in.nextLine();
+				String request = in.nextLine();
 				System.out.println("Client Request: " + request);
-        JsonObject jsonObject = new JsonParser().parse(request).getAsJsonObject();
-        String operation = jsonObject.get("operation").getAsString();
-        if (operation.equals("GET")) {
-          String key = jsonObject.get("key").getAsString();
-				  out.println(m.get(key));
-        } else if (operation.equals("PUT")) {
-          String key = jsonObject.get("key").getAsString();
-          String value = jsonObject.get("value").getAsString();
-          String oldValue = "";
-          if (m.containsKey(key)) {
-            oldValue = (String)m.get(key);
-          }
-          m.put(key, value);
-          out.println(oldValue);
-        }
+				JsonObject jsonObject = new JsonParser().parse(request)
+						.getAsJsonObject();
+				String operation = jsonObject.get("operation").getAsString();
+				if (operation.equals("GET")) {
+					String key = jsonObject.get("key").getAsString();
+					out.println(mDataStore.getValue(key));
+					//out.println(m.get(key));
+					// Comment out for now to test DB
+				} else if (operation.equals("PUT")) {
+					String key = jsonObject.get("key").getAsString();
+					String value = jsonObject.get("value").getAsString();
+					String oldValue = mDataStore.putValue(key, value);
+					if(oldValue == null) {
+						oldValue = "";
+					}
+					// Comment out for now to test DB
+					/*if (m.containsKey(key)) {
+						oldValue = (String) m.get(key);
+					}
+					m.put(key, value);*/
+					out.println(oldValue);
+				}
 			}
 			in.close();
 			out.close();
