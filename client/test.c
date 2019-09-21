@@ -18,7 +18,7 @@ int main()
 
     for(int i=0;i<NUM_SERVERS;i++) {
 	servers[i] = (char*)malloc(SERVER_LOC_SIZE*sizeof(char));
-	strcpy(servers[i], "localhost:9100");
+	strcpy(servers[i], "localhost:8004");
     }
 
     int ret = kv739_init(servers, NUM_SERVERS);
