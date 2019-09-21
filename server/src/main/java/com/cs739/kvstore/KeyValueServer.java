@@ -19,7 +19,7 @@ public class KeyValueServer {
 	static DataStore mDataStore = null;
 
 	public static void main(String[] args) throws IOException {
-		mDataStore = DataStoreFactory.getDataStore(Integer.parseInt(args[0]));
+		mDataStore = DataStoreFactory.createDataStore(Integer.parseInt(args[0]));
 		try (ServerSocket listener = new ServerSocket(Integer.parseInt(args[0]),
 				0, InetAddress.getByName("127.0.0.1"))) {
 			System.out.println("The key value server is running...");
