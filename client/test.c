@@ -18,7 +18,7 @@ int main()
 
     for(int i=0;i<NUM_SERVERS;i++) {
 	servers[i] = (char*)malloc(SERVER_LOC_SIZE*sizeof(char));
-	strcpy(servers[i], "localhost:9100");
+	strcpy(servers[i], "localhost:8004");
     }
 
     int ret = kv739_init(servers, NUM_SERVERS);
@@ -27,14 +27,14 @@ int main()
     char *val;
 
     val = (char*) malloc(MAX_VAL_SIZE * sizeof(char));
-    ret = kv739_get("100", val);
-    printf("%s\n", val);
+    // ret = kv739_get("100", val);
+    // printf("%s\n", val);
 
     ret = kv739_put("100", "danish", val);
-    printf("%s\n", val);
+    printf("Put: %s\n", val);
 
     ret = kv739_get("100", val);
-    printf("%s\n", val);
+    printf("Get: %s\n", val);
 
     Py_Finalize();
     return 0;
