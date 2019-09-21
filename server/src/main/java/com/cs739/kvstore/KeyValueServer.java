@@ -72,7 +72,7 @@ public class KeyValueServer {
 				} else if (operation.equals("PUT")) {
 					String key = jsonObject.get("key").getAsString();
 					String value = jsonObject.get("value").getAsString();
-					String oldValue = mDataStore.putValue(key, value);
+					String oldValue = mDataStore.putValue(key, value, false, true, -1);
 					if(oldValue == null) {
 						oldValue = "";
 					}

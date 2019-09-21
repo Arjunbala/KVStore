@@ -22,38 +22,72 @@ public class SQLDataStore implements DataStore {
 	}
 
 	@Override
-	public String putValue(String key, String value) {
+	public String putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
+			mDatabaseConnection.setAutoCommit(false);
 			ResultSet res = executeQuery(queryForPresenceOfKey);
 			int size = 0;
 			String oldValue = null;
+			Integer stored_seqno = -1;
 			while(res.next()) {
 				size++;
 				oldValue = res.getString("value");
+				stored_seqno = res.getInt("sequence_number");
 			}
 			assert(size == 0 || size == 1);
 			if(size == 0 ) {
 				// need to insert value for key
-				String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
-										.append(key)
-										.append("\",\"")
-										.append(value)
-										.append("\")").toString();
-				executeUpdate(insertQuery);
+				int seqno = -1;
+				if(forceUpdate) {
+					seqno = isDirty? 0 : 1;
+				} else {
+					seqno = updateSequenceNumber;
+				}
+				if(seqno > stored_seqno) {
+					String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
+							.append(key)
+							.append("\",\"")
+							.append(value)
+							.append("\",")
+							.append(seqno)
+							.append(",\"")
+							.append(isDirty)
+							.append("\")").toString();
+					executeUpdate(insertQuery);
+				}
 			} else {
 				// need to update value for key
-				String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
-						             	.append(value)
-						             	.append("\" where key=\"")
-						                .append(key)
-						                .append("\"").toString();
-				executeUpdate(updateQuery);
+				int seqno = stored_seqno;
+				if(forceUpdate && !isDirty) {
+					seqno = stored_seqno + 1;
+				} else {
+					seqno = updateSequenceNumber;
+				}
+				if(seqno > stored_seqno) {
+					String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
+			             	.append(value)
+			             	.append("\",sequence_number=")
+			             	.append(seqno)
+			             	.append(",dirty=\"")
+			             	.append(isDirty)
+			             	.append("\" where key=\"")
+			                .append(key)
+			                .append("\"").toString();
+					executeUpdate(updateQuery);
+				}
 			}
+			mDatabaseConnection.commit();
 			return oldValue;
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			try {
+				mDatabaseConnection.setAutoCommit(true);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
 		}
 		return null;
 	}
@@ -94,7 +128,7 @@ public class SQLDataStore implements DataStore {
 	}
 
 	private int createDataStoreIfNotExists() throws SQLException {
-		String query = "CREATE TABLE IF NOT EXISTS kvstore_schema(key char[128], value char[2048], PRIMARY KEY (key))";
+		String query = "CREATE TABLE IF NOT EXISTS kvstore_schema(key char[128], value char[2048], sequence_number int, dirty boolean, PRIMARY KEY (key))";
 		return (executeUpdate(query));
 	}
 	
