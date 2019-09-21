@@ -14,10 +14,11 @@ import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.cs739.kvstore.MulticastReceiverThread;
 import com.cs739.kvstore.MulticastSenderThread;
+import com.cs739.kvstore.datastore.DataStore;
+import com.cs739.kvstore.datastore.DataStoreFactory;
 import com.cs739.kvstore.ClientRequestHandlerThread;
 
 public class KeyValueServer {
@@ -27,7 +28,7 @@ public class KeyValueServer {
 	DatagramSocket datagramSocket;
 	MulticastSocket multicastSocket;
 	BlockingQueue<String> blockingQueue;
-	ConcurrentHashMap<String, String> serverCache;
+	DataStore dataStore;
 	List<Integer> servers;
 	int datagramPort;
 
@@ -36,9 +37,9 @@ public class KeyValueServer {
 		this.externalPort = externalPort;
 		this.broadcastIP = broadcastIP;
 		this.blockingQueue = new LinkedBlockingQueue<>();
-		this.serverCache = new ConcurrentHashMap<String, String>();
 		this.servers = servers;
 		this.datagramPort = datagramPort;
+		this.dataStore = DataStoreFactory.getDataStore(externalPort);
 		try {
 			this.datagramSocket = new DatagramSocket(datagramPort);
 		} catch (Exception e) {
@@ -75,7 +76,7 @@ public class KeyValueServer {
 	}
 	
 	public void start() {
-		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), getConcurrentHashMap()));
+		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), getDataStore()));
 		t1.start();
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));
@@ -85,7 +86,7 @@ public class KeyValueServer {
 			System.out.println("The key value server is running at localhost...");
 			ExecutorService pool = Executors.newFixedThreadPool(20);
 			while (true) {
-				pool.execute(new ClientRequestHandlerThread(listener.accept(), getConcurrentHashMap(), 
+				pool.execute(new ClientRequestHandlerThread(listener.accept(), getDataStore(), 
 						getBlockingQueue(), servers, externalPort));
 			}
 		} catch (Exception e) {
@@ -97,8 +98,8 @@ public class KeyValueServer {
 		return "Client facing port: " + externalPort;
 	}
 
-	public ConcurrentHashMap<String, String> getConcurrentHashMap() {
-		return serverCache;
+	public DataStore getDataStore() {
+		return dataStore;
 	}
 
 	public InetAddress getBroadcastIP() {

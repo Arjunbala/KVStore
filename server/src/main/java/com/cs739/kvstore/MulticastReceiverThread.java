@@ -8,11 +8,10 @@ import com.google.gson.JsonParser;
 
 public class MulticastReceiverThread implements Runnable {
 	private MulticastSocket socket;
-	private ConcurrentHashMap<String, String> serverCache;
+	private DataStore dataStore;
 
-	public MulticastReceiverThread(MulticastSocket socket, ConcurrentHashMap<String, String> serverCache) {
+	public MulticastReceiverThread(MulticastSocket socket) {
 		this.socket = socket;
-		this.serverCache = serverCache;
 	}
 
 	@Override
