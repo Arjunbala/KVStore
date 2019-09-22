@@ -42,8 +42,8 @@ public class KeyValueServer {
 		this.blockingQueue = new LinkedBlockingQueue<>();
 		this.servers = servers;
 		this.datagramPort = datagramPort;
-		this.dataStore = DataStoreFactory.createDataStore(externalPort);
 		this.serverStatus = serverStatus;
+		this.dataStore = DataStoreFactory.createDataStore(externalPort, this.servers, this.serverStatus, this.blockingQueue);
 		try {
 			this.datagramSocket = new DatagramSocket(datagramPort);
 		} catch (Exception e) {
@@ -82,7 +82,7 @@ public class KeyValueServer {
 	}
 	
 	public void start() {
-		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), serverStatus, servers, blockingQueue));
+		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), serverStatus));
 		t1.start();
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));

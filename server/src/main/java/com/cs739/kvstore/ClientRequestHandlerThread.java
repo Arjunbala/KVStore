@@ -73,14 +73,14 @@ public class ClientRequestHandlerThread implements Runnable {
 				if (servers.get(primary) == externalPort) {
 					// TODO : Continue here
 					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE,
-							-1, servers, serverStatus, blockingQueue);
+							-1);
 					out.println(putValueResponse.getOldValue());
 					jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
 					// Broadcast to other servers
 					blockingQueue.add(jsonObject.toString());
 				} else {
 					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE,
-							-1, servers, serverStatus, blockingQueue);
+							-1);
 					out.println(putValueResponse.getOldValue());
 					boolean forwarded = false;
 					while (!forwarded) {
