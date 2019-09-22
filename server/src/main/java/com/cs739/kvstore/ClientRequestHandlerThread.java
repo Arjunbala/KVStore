@@ -9,6 +9,7 @@ import java.util.concurrent.BlockingQueue;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
+import com.cs739.kvstore.datastore.PutValueResponse;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -64,10 +65,13 @@ public class ClientRequestHandlerThread implements Runnable {
 				// This is the primary
 				if (servers.get(primary) == externalPort) {
 					// TODO : Continue here
-					dataStore.putValue(key, value, false, true, -1);
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, false, true, -1);
+					jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
 					// Broadcast to other servers
 					blockingQueue.add(jsonObject.toString());
 				} else {
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, true, false, -1);
+					out.println(putValueResponse.getOldValue());
 					System.out.println("Primary server is " + servers.get(primary) + " and " + socket.getPort());
 					// Some other server is primary
 					Socket primarySocket = null;

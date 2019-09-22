@@ -76,7 +76,7 @@ public class KeyValueServer {
 	}
 	
 	public void start() {
-		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), getDataStore()));
+		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket()));
 		t1.start();
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));
@@ -86,7 +86,7 @@ public class KeyValueServer {
 			System.out.println("The key value server is running at localhost...");
 			ExecutorService pool = Executors.newFixedThreadPool(20);
 			while (true) {
-				pool.execute(new ClientRequestHandlerThread(listener.accept(), getDataStore(), 
+				pool.execute(new ClientRequestHandlerThread(listener.accept(), 
 						getBlockingQueue(), servers, externalPort));
 			}
 		} catch (Exception e) {

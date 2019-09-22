@@ -40,9 +40,11 @@ public class SQLDataStore implements DataStore {
 			assert(size == 0 || size == 1);
 			if(size == 0 ) {
 				// need to insert value for key
-				int seqno = -1;
+				int seqno = 0;
 				if(forceUpdate) {
 					seqno = isDirty? 0 : 1;
+				} else if(isDirty) {
+					seqno = stored_seqno;
 				} else {
 					seqno = updateSequenceNumber;
 				}
@@ -64,6 +66,8 @@ public class SQLDataStore implements DataStore {
 				int seqno = stored_seqno;
 				if(forceUpdate && !isDirty) {
 					seqno = stored_seqno + 1;
+				} else if (!forceUpdate && isDirty) {
+					seqno = stored_seqno;
 				} else {
 					seqno = updateSequenceNumber;
 				}
