@@ -8,7 +8,7 @@ public interface DataStore {
 	 * @param value
 	 * @return
 	 */
-	public String putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber);
+	public PutValueResponse putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber);
 
 	/**
 	 * Get a value from datastore

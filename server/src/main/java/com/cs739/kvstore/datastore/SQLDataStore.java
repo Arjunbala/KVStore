@@ -22,7 +22,7 @@ public class SQLDataStore implements DataStore {
 	}
 
 	@Override
-	public String putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber) {
+	public PutValueResponse putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
@@ -30,6 +30,7 @@ public class SQLDataStore implements DataStore {
 			ResultSet res = executeQuery(queryForPresenceOfKey);
 			int size = 0;
 			String oldValue = null;
+			int seqToReturn = -1;
 			Integer stored_seqno = -1;
 			while(res.next()) {
 				size++;
@@ -46,6 +47,7 @@ public class SQLDataStore implements DataStore {
 					seqno = updateSequenceNumber;
 				}
 				if(seqno > stored_seqno) {
+					seqToReturn = seqno;
 					String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
 							.append(key)
 							.append("\",\"")
@@ -66,6 +68,7 @@ public class SQLDataStore implements DataStore {
 					seqno = updateSequenceNumber;
 				}
 				if(seqno > stored_seqno) {
+					seqToReturn = seqno;
 					String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
 			             	.append(value)
 			             	.append("\",sequence_number=")
@@ -79,7 +82,7 @@ public class SQLDataStore implements DataStore {
 				}
 			}
 			mDatabaseConnection.commit();
-			return oldValue;
+			return new PutValueResponse(oldValue, seqToReturn);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
