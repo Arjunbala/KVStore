@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define SERVER_LOC_SIZE 50
-#define NUM_SERVERS 1
+#define NUM_SERVERS 2
 #define MAX_VAL_SIZE 2048
 
 int main()
@@ -18,8 +18,9 @@ int main()
 
     for(int i=0;i<NUM_SERVERS;i++) {
 	servers[i] = (char*)malloc(SERVER_LOC_SIZE*sizeof(char));
-	strcpy(servers[i], "localhost:8004");
     }
+    strcpy(servers[0], "localhost:8003");
+    strcpy(servers[1], "localhost:8004");
 
     int ret = kv739_init(servers, NUM_SERVERS);
     printf("Kv_init %d\n", ret);
