@@ -22,16 +22,15 @@ public class SQLDataStore implements DataStore {
 	}
 
 	@Override
-	public PutValueResponse putValue(String key, String value, boolean isDirty, boolean forceUpdate, Integer updateSequenceNumber) {
+	public PutValueResponse putValue(String key, String value, PutValueRequest type, int updateSequenceNumber) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
-			mDatabaseConnection.setAutoCommit(false);
 			ResultSet res = executeQuery(queryForPresenceOfKey);
 			int size = 0;
 			String oldValue = null;
-			int seqToReturn = -1;
-			Integer stored_seqno = -1;
+			int seqToReturn = 0;
+			Integer stored_seqno = 0;
 			while(res.next()) {
 				size++;
 				oldValue = res.getString("value");
@@ -41,14 +40,19 @@ public class SQLDataStore implements DataStore {
 			if(size == 0 ) {
 				// need to insert value for key
 				int seqno = 0;
-				if(forceUpdate) {
-					seqno = isDirty? 0 : 1;
-				} else if(isDirty) {
-					seqno = stored_seqno;
-				} else {
+				boolean isDirty = false;
+				if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
 					seqno = updateSequenceNumber;
+					isDirty = false;
+				} else if (type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
+					seqno = stored_seqno;
+					isDirty = true;
+				} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+					seqno = stored_seqno + 1;
+					isDirty = false;
 				}
-				if(seqno > stored_seqno) {
+				System.out.println(stored_seqno + ":" + seqno);
+				if(seqno >= stored_seqno) {
 					seqToReturn = seqno;
 					String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
 							.append(key)
@@ -59,19 +63,24 @@ public class SQLDataStore implements DataStore {
 							.append(",\"")
 							.append(isDirty)
 							.append("\")").toString();
+					System.out.println(insertQuery);
 					executeUpdate(insertQuery);
 				}
 			} else {
 				// need to update value for key
 				int seqno = stored_seqno;
-				if(forceUpdate && !isDirty) {
-					seqno = stored_seqno + 1;
-				} else if (!forceUpdate && isDirty) {
+				boolean isDirty = false;
+				if(type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
 					seqno = stored_seqno;
-				} else {
+					isDirty = true;
+				} else if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
 					seqno = updateSequenceNumber;
+					isDirty = false;
+				} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+					seqno = stored_seqno + 1;
+					isDirty = false;
 				}
-				if(seqno > stored_seqno) {
+				if(seqno >= stored_seqno) {
 					seqToReturn = seqno;
 					String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
 			             	.append(value)
@@ -82,19 +91,13 @@ public class SQLDataStore implements DataStore {
 			             	.append("\" where key=\"")
 			                .append(key)
 			                .append("\"").toString();
+					System.out.println(updateQuery);
 					executeUpdate(updateQuery);
 				}
 			}
-			mDatabaseConnection.commit();
 			return new PutValueResponse(oldValue, seqToReturn);
 		} catch (SQLException e) {
 			e.printStackTrace();
-		} finally {
-			try {
-				mDatabaseConnection.setAutoCommit(true);
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
 		}
 		return null;
 	}

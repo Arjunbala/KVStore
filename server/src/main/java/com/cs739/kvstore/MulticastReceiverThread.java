@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
+import com.cs739.kvstore.datastore.PutValueRequest;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -35,7 +36,7 @@ public class MulticastReceiverThread implements Runnable {
 			String key = jsonObject.get("key").getAsString();
 			String value = jsonObject.get("value").getAsString();
 			int updateSequenceNumber = jsonObject.get("seq").getAsInt();
-			dataStore.putValue(key, value, false, false, updateSequenceNumber); 
+			dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber); 
 		}		
 	}
 

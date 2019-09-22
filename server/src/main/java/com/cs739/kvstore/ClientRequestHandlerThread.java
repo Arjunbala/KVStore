@@ -9,6 +9,7 @@ import java.util.concurrent.BlockingQueue;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
+import com.cs739.kvstore.datastore.PutValueRequest;
 import com.cs739.kvstore.datastore.PutValueResponse;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -61,17 +62,16 @@ public class ClientRequestHandlerThread implements Runnable {
 				String key = jsonObject.get("key").getAsString();
 				String value = jsonObject.get("value").getAsString();
 				int primary = hashFunc(key);
-				String oldValue = "";
-				out.println(oldValue);
 				// This is the primary
 				if (servers.get(primary) == externalPort) {
 					// TODO : Continue here
-					PutValueResponse putValueResponse = dataStore.putValue(key, value, false, true, -1);
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE, -1);
+					out.println(putValueResponse.getOldValue());
 					jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
 					// Broadcast to other servers
 					blockingQueue.add(jsonObject.toString());
 				} else {
-					PutValueResponse putValueResponse = dataStore.putValue(key, value, true, false, -1);
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, -1);
 					out.println(putValueResponse.getOldValue());
 					System.out.println("Primary server is " + servers.get(primary) + " and " + socket.getPort());
 					// Some other server is primary
