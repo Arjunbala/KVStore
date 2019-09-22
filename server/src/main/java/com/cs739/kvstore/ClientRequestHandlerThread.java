@@ -29,6 +29,7 @@ public class ClientRequestHandlerThread implements Runnable {
 	}
 	
 	public int hashFunc(String key) {
+		System.out.println();
 		return key.hashCode() % servers.size();
 	}
 	@Override
@@ -82,7 +83,7 @@ public class ClientRequestHandlerThread implements Runnable {
 					}
 					PrintWriter primaryWriter = null;
 					try {
-						primaryWriter = new PrintWriter(primarySocket.getOutputStream());
+						primaryWriter = new PrintWriter(primarySocket.getOutputStream(), true);
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
