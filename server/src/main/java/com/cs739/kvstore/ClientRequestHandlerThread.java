@@ -65,13 +65,13 @@ public class ClientRequestHandlerThread implements Runnable {
 				// This is the primary
 				if (servers.get(primary) == externalPort) {
 					// TODO : Continue here
-					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE, -1);
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE, -1, servers);
 					out.println(putValueResponse.getOldValue());
 					jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
 					// Broadcast to other servers
 					blockingQueue.add(jsonObject.toString());
 				} else {
-					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, -1);
+					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, -1, servers);
 					out.println(putValueResponse.getOldValue());
 					System.out.println("Primary server is " + servers.get(primary) + " and " + socket.getPort());
 					// Some other server is primary
@@ -91,6 +91,11 @@ public class ClientRequestHandlerThread implements Runnable {
 					primaryWriter.println(jsonObject.toString());
 					// Forward it
 				}
+			} else if (operation.equals("GET_SEQ_NO")) {
+				String key = jsonObject.get("key").getAsString();
+				JsonObject jsonobject = new JsonObject();
+				jsonobject.addProperty("seq", dataStore.getSequenceNumber(key));
+				out.println(jsonobject.toString());
 			}
 		}
 		in.close();

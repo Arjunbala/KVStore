@@ -2,7 +2,7 @@ package com.cs739.kvstore;
 
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
@@ -13,10 +13,12 @@ import com.google.gson.JsonParser;
 public class MulticastReceiverThread implements Runnable {
 	private MulticastSocket socket;
 	private DataStore dataStore;
+	private List<Integer> servers;
 
-	public MulticastReceiverThread(MulticastSocket socket) {
+	public MulticastReceiverThread(MulticastSocket socket, List<Integer> servers) {
 		this.socket = socket;
 		this.dataStore = DataStoreFactory.getDataStore();
+		this.servers = servers;
 	}
 
 	@Override
@@ -36,7 +38,7 @@ public class MulticastReceiverThread implements Runnable {
 			String key = jsonObject.get("key").getAsString();
 			String value = jsonObject.get("value").getAsString();
 			int updateSequenceNumber = jsonObject.get("seq").getAsInt();
-			dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber); 
+			dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber, servers); 
 		}		
 	}
 

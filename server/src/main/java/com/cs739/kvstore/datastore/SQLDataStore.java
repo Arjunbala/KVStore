@@ -1,10 +1,18 @@
 package com.cs739.kvstore.datastore;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.Scanner;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class SQLDataStore implements DataStore {
 
@@ -16,13 +24,16 @@ public class SQLDataStore implements DataStore {
 		establishConnection();
 		try {
 			createDataStoreIfNotExists();
+			// Mark all entries all potentially stale
+			markAllKeyStale();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
 
 	@Override
-	public synchronized PutValueResponse putValue(String key, String value, PutValueRequest type, int updateSequenceNumber) {
+	public synchronized PutValueResponse putValue(String key, String value, PutValueRequest type, 
+			int updateSequenceNumber, List<Integer> servers) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
@@ -31,12 +42,51 @@ public class SQLDataStore implements DataStore {
 			String oldValue = null;
 			int seqToReturn = 0;
 			Integer stored_seqno = 0;
+			boolean might_be_stale = true;
 			while(res.next()) {
 				size++;
 				oldValue = res.getString("value");
 				stored_seqno = res.getInt("sequence_number");
+				might_be_stale = res.getBoolean("might_be_stale");
 			}
+			System.out.println(might_be_stale);
 			assert(size == 0 || size == 1);
+			if(might_be_stale && type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+				// Need to contact other servers for latest sequence number
+				System.out.println("Sequence number for key might be stale");
+				JsonObject seqRequest = new JsonObject();
+				seqRequest.addProperty("operation", "GET_SEQ_NO");
+				seqRequest.addProperty("key", key);
+				for(Integer s : servers) {
+					System.out.println("Contacting server " + Integer.toString(s));
+					Socket contactSocket = null;
+					try {
+						contactSocket = new Socket("127.0.0.1", s);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					PrintWriter contactWriter = null;
+					Scanner incoming = null;
+					try {
+						contactWriter = new PrintWriter(contactSocket.getOutputStream(), true);
+						incoming = new Scanner(contactSocket.getInputStream());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					contactWriter.println(seqRequest.toString());
+					while(incoming.hasNextLine()) {
+						String response = incoming.nextLine();
+						System.out.println("Response from server " +
+						    Integer.toString(s) + " is " + response);
+						JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
+						Integer seq = jsonObject.get("seq").getAsInt();
+						if(seq > stored_seqno) {
+							stored_seqno = seq;
+						}
+						break;
+					}
+				}
+			}
 			if(size == 0 ) {
 				// need to insert value for key
 				int seqno = 0;
@@ -62,6 +112,8 @@ public class SQLDataStore implements DataStore {
 							.append(seqno)
 							.append(",\"")
 							.append(isDirty)
+							.append("\",\"")
+							.append("false")
 							.append("\")").toString();
 					System.out.println(insertQuery);
 					executeUpdate(insertQuery);
@@ -88,6 +140,8 @@ public class SQLDataStore implements DataStore {
 			             	.append(seqno)
 			             	.append(",dirty=\"")
 			             	.append(isDirty)
+			             	.append("\",might_be_stale=\"")
+							.append("false")
 			             	.append("\" where key=\"")
 			                .append(key)
 			                .append("\"").toString();
@@ -125,6 +179,34 @@ public class SQLDataStore implements DataStore {
 		}
 		return null;
 	}
+	
+	@Override
+	public Integer getSequenceNumber(String key) {
+		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
+		try {
+			ResultSet res = executeQuery(queryForPresenceOfKey);
+			int size = 0;
+			Integer value = 0;
+			while(res.next()) {
+				size++;
+				value = res.getInt("sequence_number");
+			}
+			assert(size == 0 || size == 1);
+			if(size == 0) {
+				return 0;
+			} else {
+				return value;
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+	
+	private int markAllKeyStale() throws SQLException {
+		String query = "UPDATE kvstore_schema set might_be_stale=\"true\"";
+		return (executeUpdate(query));
+	}
 
 	private void establishConnection() {
 		String jdbc_url = "jdbc:sqlite:" + mDbName;
@@ -140,7 +222,8 @@ public class SQLDataStore implements DataStore {
 	}
 
 	private int createDataStoreIfNotExists() throws SQLException {
-		String query = "CREATE TABLE IF NOT EXISTS kvstore_schema(key char[128], value char[2048], sequence_number int, dirty boolean, PRIMARY KEY (key))";
+		String query = "CREATE TABLE IF NOT EXISTS kvstore_schema(key char[128], value char[2048], "
+				+ "sequence_number int, dirty boolean, might_be_stale boolean, PRIMARY KEY (key))";
 		return (executeUpdate(query));
 	}
 	
