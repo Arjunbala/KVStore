@@ -3,6 +3,9 @@ package com.cs739.kvstore;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.cs739.kvstore.datastore.DataStore;
+import com.cs739.kvstore.datastore.DataStoreFactory;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -12,6 +15,7 @@ public class MulticastReceiverThread implements Runnable {
 
 	public MulticastReceiverThread(MulticastSocket socket) {
 		this.socket = socket;
+		this.dataStore = DataStoreFactory.getDataStore();
 	}
 
 	@Override
@@ -30,7 +34,8 @@ public class MulticastReceiverThread implements Runnable {
 			JsonObject jsonObject = new JsonParser().parse(received.trim()).getAsJsonObject();
 			String key = jsonObject.get("key").getAsString();
 			String value = jsonObject.get("value").getAsString();
-			serverCache.put(key, value); 
+			int updateSequenceNumber = jsonObject.get("seq").getAsInt();
+			dataStore.putValue(key, value, false, false, updateSequenceNumber); 
 		}		
 	}
 

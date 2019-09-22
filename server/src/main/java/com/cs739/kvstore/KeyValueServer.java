@@ -39,7 +39,7 @@ public class KeyValueServer {
 		this.blockingQueue = new LinkedBlockingQueue<>();
 		this.servers = servers;
 		this.datagramPort = datagramPort;
-		this.dataStore = DataStoreFactory.getDataStore(externalPort);
+		this.dataStore = DataStoreFactory.createDataStore(externalPort);
 		try {
 			this.datagramSocket = new DatagramSocket(datagramPort);
 		} catch (Exception e) {

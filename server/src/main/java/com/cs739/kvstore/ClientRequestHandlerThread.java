@@ -6,8 +6,9 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 
+import com.cs739.kvstore.datastore.DataStore;
+import com.cs739.kvstore.datastore.DataStoreFactory;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -15,12 +16,12 @@ public class ClientRequestHandlerThread implements Runnable {
 	private Socket socket;
 	private int externalPort;
 	private List<Integer> servers;
-	private ConcurrentHashMap<String, String> serverCache;
 	private BlockingQueue<String> blockingQueue;
-	public ClientRequestHandlerThread(Socket socket, ConcurrentHashMap<String, String> serverCache,
+	private DataStore dataStore;
+	public ClientRequestHandlerThread(Socket socket,
 			BlockingQueue<String> blockingQueue, List<Integer> servers, int externalPort) {
 		this.socket = socket;
-		this.serverCache = serverCache;
+		this.dataStore = DataStoreFactory.getDataStore();
 		this.blockingQueue = blockingQueue;
 		this.servers = servers;
 		this.externalPort = externalPort;
@@ -52,20 +53,18 @@ public class ClientRequestHandlerThread implements Runnable {
 			String operation = jsonObject.get("operation").getAsString();
 			if (operation.equals("GET")) {
 				String key = jsonObject.get("key").getAsString();
-				out.println(serverCache.get(key));
+				out.println(dataStore.getValue(key));
 			} else if (operation.equals("PUT")) {
 				// TODO: Put hash logic
 				String key = jsonObject.get("key").getAsString();
 				String value = jsonObject.get("value").getAsString();
 				int primary = hashFunc(key);
 				String oldValue = "";
-				if (serverCache.containsKey(key)) {
-					oldValue = (String)serverCache.get(key);
-				}
-				serverCache.put(key, value);
 				out.println(oldValue);
 				// This is the primary
 				if (servers.get(primary) == externalPort) {
+					// TODO : Continue here
+					dataStore.putValue(key, value, false, true, -1);
 					// Broadcast to other servers
 					blockingQueue.add(jsonObject.toString());
 				} else {
