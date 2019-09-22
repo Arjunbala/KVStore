@@ -22,7 +22,7 @@ public class SQLDataStore implements DataStore {
 	}
 
 	@Override
-	public PutValueResponse putValue(String key, String value, PutValueRequest type, int updateSequenceNumber) {
+	public synchronized PutValueResponse putValue(String key, String value, PutValueRequest type, int updateSequenceNumber) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
@@ -95,6 +95,7 @@ public class SQLDataStore implements DataStore {
 					executeUpdate(updateQuery);
 				}
 			}
+			mDatabaseConnection.commit();
 			return new PutValueResponse(oldValue, seqToReturn);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -132,6 +133,7 @@ public class SQLDataStore implements DataStore {
 			System.out.println(
 					"Connection to SQLite has been established for client "
 							+ mDbName);
+			mDatabaseConnection.setAutoCommit(false);
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
 		}
