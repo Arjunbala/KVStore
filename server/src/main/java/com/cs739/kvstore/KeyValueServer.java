@@ -82,7 +82,7 @@ public class KeyValueServer {
 	}
 	
 	public void start() {
-		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), serverStatus));
+		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), serverStatus, servers, blockingQueue));
 		t1.start();
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));
