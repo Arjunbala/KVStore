@@ -2,9 +2,7 @@ package com.cs739.kvstore;
 
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.List;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
@@ -16,16 +14,11 @@ public class MulticastReceiverThread implements Runnable {
 	private MulticastSocket socket;
 	private DataStore dataStore;
 	private CopyOnWriteArrayList<Boolean> serverStatus;
-	private BlockingQueue<String> blockingQueue;
-	private List<Integer> servers;
 
-	public MulticastReceiverThread(MulticastSocket socket, CopyOnWriteArrayList<Boolean> serverStatus,
-			List<Integer> servers, BlockingQueue<String> blockingQueue) {
+	public MulticastReceiverThread(MulticastSocket socket, CopyOnWriteArrayList<Boolean> serverStatus) {
 		this.socket = socket;
 		this.dataStore = DataStoreFactory.getDataStore();
 		this.serverStatus = serverStatus;
-		this.servers = servers;
-		this.blockingQueue = blockingQueue;
 	}
 
 	@Override
@@ -53,8 +46,7 @@ public class MulticastReceiverThread implements Runnable {
 				String key = jsonObject.get("key").getAsString();
 				String value = jsonObject.get("value").getAsString();
 				int updateSequenceNumber = jsonObject.get("seq").getAsInt();
-				dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber,
-						servers, serverStatus, blockingQueue); 
+				dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber); 
 			}
 		}		
 	}

@@ -20,8 +20,15 @@ public class SQLDataStore implements DataStore {
 
 	String mDbName;
 	Connection mDatabaseConnection;
+	List<Integer> servers;
+	CopyOnWriteArrayList<Boolean> serverStatus;
+	BlockingQueue<String> blockingQueue;
 
-	public SQLDataStore(int port) {
+	public SQLDataStore(int port, List<Integer> servers, CopyOnWriteArrayList<Boolean> serverStatus,
+			BlockingQueue<String> blockingQueue) {
+		this.servers = servers;
+		this.serverStatus = serverStatus;
+		this.blockingQueue = blockingQueue;
 		mDbName = "kvstore_" + Integer.toString(port) + ".db";
 		establishConnection();
 		try {
@@ -37,7 +44,7 @@ public class SQLDataStore implements DataStore {
 
 	@Override
 	public synchronized PutValueResponse putValue(String key, String value, PutValueRequest type, 
-			int updateSequenceNumber, List<Integer> servers, CopyOnWriteArrayList<Boolean> serverStatus, BlockingQueue<String> blockingQueue) {
+			int updateSequenceNumber) {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
 		try {
