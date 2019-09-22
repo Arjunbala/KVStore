@@ -5,10 +5,9 @@ import random
 import json
 
 connection_sockets = []
-primary_server = -1 # TODO: Handle failover
+primary_server = -1
 
 cdef public int kv739_init(char **servers, int num_servers):
-    # TODO: Implement
     cdef char **srvs = servers
     cdef int i
 
@@ -23,7 +22,9 @@ cdef public int kv739_init(char **servers, int num_servers):
         except socket.error, exc:
             print "Caught exception socket.error : %s" % exc
         
-    if(len(connection_sockets) == 0):
+    if(len(connection_sockets) < num_servers):
+        print "Could not connect to all servers in init"
+        cleanup(connection_sockets)
         return -1
 
     # Pick one server to communicate to as a primary. We fallback to secondaries only in event of failure
@@ -32,30 +33,32 @@ cdef public int kv739_init(char **servers, int num_servers):
     return 0
 
 cdef public int kv739_shutdown():
-    # TODO: Implement. Close all connections and cleanup
+    cleanup(connection_sockets)
     return -1
 
 cdef public int kv739_get(char * key, char * value):
-    # TODO: Implement
     val = getValueForKey(key, primary_server)
     strcpy(value, val)
     return -1
 
 cdef public int kv739_put(char * key, char * value, char * old_value):
-    #TODO: Implement
     oldval = setValueForKey(key,value, primary_server)
     strcpy(old_value, oldval)
     return -1
+
+def cleanup(connection_sockets):
+    for i in range(0, len(connection_sockets)):
+        connection_sockets[i].close()
+    primary_server = -1
+    connection_sockets = []
 
 def getValueForKey(key, primary_server):
     data = {}
     data['operation'] = 'GET'
     data['key'] = key
     json_data = json.dumps(data)
-    # TODO: Implement
     # Attempt to send request to primary server
 
-    # TODO: Error handling and failover
     print('Sending...')
     failovers = 0
     while failovers < len(connection_sockets):

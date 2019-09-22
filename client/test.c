@@ -25,6 +25,9 @@ int main()
     int ret = kv739_init(servers, NUM_SERVERS);
     printf("Kv_init %d\n", ret);
 
+    if(ret == -1){
+	    exit(0);
+    }
     char *val;
 
     val = (char*) malloc(MAX_VAL_SIZE * sizeof(char));
