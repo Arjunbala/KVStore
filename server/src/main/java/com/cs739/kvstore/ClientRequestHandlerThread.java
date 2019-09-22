@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
@@ -18,20 +19,26 @@ public class ClientRequestHandlerThread implements Runnable {
 	private Socket socket;
 	private int externalPort;
 	private List<Integer> servers;
+	private CopyOnWriteArrayList<Boolean> serverStatus;
 	private BlockingQueue<String> blockingQueue;
 	private DataStore dataStore;
 	public ClientRequestHandlerThread(Socket socket,
-			BlockingQueue<String> blockingQueue, List<Integer> servers, int externalPort) {
+			BlockingQueue<String> blockingQueue, List<Integer> servers, int externalPort, CopyOnWriteArrayList<Boolean> serverStatus) {
 		this.socket = socket;
 		this.dataStore = DataStoreFactory.getDataStore();
 		this.blockingQueue = blockingQueue;
 		this.servers = servers;
 		this.externalPort = externalPort;
+		this.serverStatus = serverStatus;
 	}
-	
+
 	public int hashFunc(String key) {
 		System.out.println();
-		return key.hashCode() % servers.size();
+		int primary = key.hashCode() % servers.size();
+		while (!serverStatus.get(primary)) {
+			primary = (primary + 1) % servers.size();
+		}
+		return primary;
 	}
 	@Override
 	public void run() {
@@ -73,23 +80,31 @@ public class ClientRequestHandlerThread implements Runnable {
 				} else {
 					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, -1);
 					out.println(putValueResponse.getOldValue());
-					System.out.println("Primary server is " + servers.get(primary) + " and " + socket.getPort());
-					// Some other server is primary
-					Socket primarySocket = null;
-					try {
-						primarySocket = new Socket("127.0.0.1", servers.get(primary));
-					} catch (Exception e) {
-						e.printStackTrace();
+					boolean forwarded = false;
+					while (!forwarded) {
+						System.out.println("Primary server is " + servers.get(primary));
+						// Some other server is primary
+						Socket primarySocket = null;
+						PrintWriter primaryWriter = null;
+						try {
+							primarySocket = new Socket("127.0.0.1", servers.get(primary));
+							primaryWriter = new PrintWriter(primarySocket.getOutputStream(), true);
+							primaryWriter.println(jsonObject.toString());
+							forwarded = true;
+						} catch (IOException e) {
+							// TODO: Should we check for primarySocket NULL?
+							// Set 'primary' server status as dead
+							serverStatus.set(primary, false);
+							// Broadcast to other servers that 'primary' is dead
+							JsonObject serverDeadMessage = new JsonObject();
+							serverDeadMessage.addProperty("operation", "SERVER_DOWN");
+							serverDeadMessage.addProperty("server", primary);
+							blockingQueue.add(serverDeadMessage.toString());
+							// Find new 'primary' to forward the message to
+							primary = hashFunc(key);
+							e.printStackTrace();
+						}
 					}
-					PrintWriter primaryWriter = null;
-					try {
-						primaryWriter = new PrintWriter(primarySocket.getOutputStream(), true);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					primaryWriter.println(jsonObject.toString());
-					// Forward it
 				}
 			}
 		}

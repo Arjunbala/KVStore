@@ -14,11 +14,13 @@ import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.cs739.kvstore.MulticastReceiverThread;
 import com.cs739.kvstore.MulticastSenderThread;
 import com.cs739.kvstore.datastore.DataStore;
 import com.cs739.kvstore.datastore.DataStoreFactory;
+import com.google.gson.JsonObject;
 import com.cs739.kvstore.ClientRequestHandlerThread;
 
 public class KeyValueServer {
@@ -30,16 +32,18 @@ public class KeyValueServer {
 	BlockingQueue<String> blockingQueue;
 	DataStore dataStore;
 	List<Integer> servers;
+	CopyOnWriteArrayList<Boolean> serverStatus;
 	int datagramPort;
 
 	public KeyValueServer(int externalPort, 
-			InetAddress broadcastIP, List<Integer> servers, int datagramPort) {
+			InetAddress broadcastIP, List<Integer> servers, int datagramPort, CopyOnWriteArrayList<Boolean> serverStatus) {
 		this.externalPort = externalPort;
 		this.broadcastIP = broadcastIP;
 		this.blockingQueue = new LinkedBlockingQueue<>();
 		this.servers = servers;
 		this.datagramPort = datagramPort;
 		this.dataStore = DataStoreFactory.createDataStore(externalPort);
+		this.serverStatus = serverStatus;
 		try {
 			this.datagramSocket = new DatagramSocket(datagramPort);
 		} catch (Exception e) {
@@ -58,6 +62,7 @@ public class KeyValueServer {
 		Scanner sc = new Scanner(file);
 		int externalPort = Integer.parseInt(args[0]);
 		List<Integer> servers = new ArrayList<Integer>();
+		CopyOnWriteArrayList<Boolean> serverStatus = new CopyOnWriteArrayList<Boolean>();
 		int datagramPort = -1;
 		while (sc.hasNextLine()) {
 			String currentLine = sc.nextLine();
@@ -67,27 +72,33 @@ public class KeyValueServer {
 				datagramPort = currentdatagramPort;
 			}
 			servers.add(serverPort);
+			serverStatus.add(true);
 		}
 		sc.close();
 		InetAddress broadcastIP = InetAddress.getByName("224.0.113.0");
 		KeyValueServer keyValueServer = new KeyValueServer(externalPort,
-				broadcastIP, servers, datagramPort);
+				broadcastIP, servers, datagramPort, serverStatus);
 		keyValueServer.start();
 	}
 	
 	public void start() {
-		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket()));
+		Thread t1 = new Thread (new MulticastReceiverThread(getMulticastSocket(), serverStatus));
 		t1.start();
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));
-		t2.start();	
+		t2.start();
+		// Broadcast to all servers that the server started
+		JsonObject serverAliveMessage = new JsonObject();
+		serverAliveMessage.addProperty("operation", "SERVER_UP");
+		serverAliveMessage.addProperty("server", servers.indexOf(externalPort));
+		blockingQueue.add(serverAliveMessage.toString());
 		try (ServerSocket listener = new ServerSocket(externalPort,
 				0, InetAddress.getByName("127.0.0.1"))) {
 			System.out.println("The key value server is running at localhost...");
 			ExecutorService pool = Executors.newFixedThreadPool(20);
 			while (true) {
 				pool.execute(new ClientRequestHandlerThread(listener.accept(), 
-						getBlockingQueue(), servers, externalPort));
+						getBlockingQueue(), servers, externalPort, serverStatus));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
