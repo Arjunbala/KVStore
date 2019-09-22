@@ -28,9 +28,11 @@ public class SQLDataStore implements DataStore {
 			createDataStoreIfNotExists();
 			// Mark all entries all potentially stale
 			markAllKeyStale();
+			resendDirtyKeys();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
+		// Resend dirty keys - could have been possible that we updated DB but did not broadcast
 	}
 
 	@Override
@@ -211,6 +213,19 @@ public class SQLDataStore implements DataStore {
 	private int markAllKeyStale() throws SQLException {
 		String query = "UPDATE kvstore_schema set might_be_stale=\"true\"";
 		return (executeUpdate(query));
+	}
+	
+	private void resendDirtyKeys() throws SQLException {
+		String queryForPresenceOfKey = "SELECT key,value FROM kvstore_schema where dirty=\"true\"";
+		try {
+			ResultSet res = executeQuery(queryForPresenceOfKey);
+			while(res.next()) {
+				putValue(res.getString("key"), res.getString("value"), 
+						PutValueRequest.APPLY_FOLLOWER_UPDATE, -1);
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void establishConnection() {
