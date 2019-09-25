@@ -29,10 +29,10 @@ char *rand_string(char *str, size_t size)
     return str;
 }
 
-int get_time_elapsed_sec(struct timeval tv1, struct timeval tv2) {
+float get_time_elapsed_sec(struct timeval tv1, struct timeval tv2) {
     struct timeval tvdiff = { tv2.tv_sec - tv1.tv_sec, tv2.tv_usec - tv1.tv_usec };
     if (tvdiff.tv_usec < 0) { tvdiff.tv_usec += 1000000; tvdiff.tv_sec -= 1; }
-    return tvdiff.tv_sec + tvdiff.tv_usec/(1000*1000);
+    return tvdiff.tv_sec + tvdiff.tv_usec/(1000.0*1000.0);
 }
 
 int main(int argc, char *argv[])
@@ -59,15 +59,15 @@ int main(int argc, char *argv[])
     
     // Now generate KVSTORE_SIZE random keys
     char **keys;
-    keys = (char**) malloc(KVSTORE_SIZE*sizeof(char));
+    keys = (char**) malloc(KVSTORE_SIZE*sizeof(char*));
     for(int i=0;i<KVSTORE_SIZE;i++) {
         keys[i] = (char*)malloc(MAX_VAL_SIZE*sizeof(char));
 	rand_string(keys[i], 128);
     }
 
-    // Put seed values for 100000 random keys
+    // Put seed values for KVSTORE_SIZE random keys
     char **values;
-    values = (char**) malloc(KVSTORE_SIZE*sizeof(char));
+    values = (char**) malloc(KVSTORE_SIZE*sizeof(char*));
     for(int i=0;i<KVSTORE_SIZE;i++) {
 	values[i] = (char*)malloc(MAX_VAL_SIZE*sizeof(char));
         rand_string(values[i], 512);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     printf("Read throughput = %f\n keys/sec", (KVSTORE_SIZE * 1.0)/get_time_elapsed_sec(tv1,tv2));
 
     // Now restart the killed server and check what happens
-    strcpy(system_command, "bash ../server/start_servers.sh 8003 8004");
+    strcpy(system_command, "bash ../server/start_servers.sh -p 8003,8004");
     ret = system(system_command);
 
     // Wait for 5000 ms for kill to take effect

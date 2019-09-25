@@ -63,9 +63,11 @@ then
   rm -vf ${CONF_FILE}
 fi
 # Assign internal ports used for multicast communication
-INTERNAL_PORT=4447
+MULTICAST_PORT=4447
+INTERNAL_PORT=9001
 for server_port in "${server_ports[@]}"; do
-  echo "${server_port},${INTERNAL_PORT}" >> ${CONF_FILE}
+  echo "${server_port},${MULTICAST_PORT},${INTERNAL_PORT}" >> ${CONF_FILE}
+  MULTICAST_PORT=$((MULTICAST_PORT+1))
   INTERNAL_PORT=$((INTERNAL_PORT+1))
 done
 
@@ -81,6 +83,7 @@ for server_port in "${server_ports[@]}"; do
   LOG_FILE="${LOG_DIR}/KVStore_${server_port}.log"
   echo "Creating server on port ${server_port}, please check it's log at ${LOG_FILE}..."
   mvn exec:java -Dexec.mainClass="com.cs739.kvstore.KeyValueServer" -Dexec.args="${server_port} ${CONF_FILE}" > ${LOG_FILE} 2>&1 &
+  sleep 2
 done
 
 exit 0

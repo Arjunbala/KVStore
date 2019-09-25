@@ -34,16 +34,23 @@ public class KeyValueServer {
 	List<Integer> servers;
 	CopyOnWriteArrayList<Boolean> serverStatus;
 	int datagramPort;
+	int internalPort;
+	List<Integer> internalPorts;
+	ServerSocket internalSocket;
 
 	public KeyValueServer(int externalPort, 
-			InetAddress broadcastIP, List<Integer> servers, int datagramPort, CopyOnWriteArrayList<Boolean> serverStatus) {
+			InetAddress broadcastIP, List<Integer> servers, int datagramPort, 
+			CopyOnWriteArrayList<Boolean> serverStatus, int internalPort, List<Integer> internalPorts) {
 		this.externalPort = externalPort;
 		this.broadcastIP = broadcastIP;
 		this.blockingQueue = new LinkedBlockingQueue<>();
 		this.servers = servers;
 		this.datagramPort = datagramPort;
 		this.serverStatus = serverStatus;
-		this.dataStore = DataStoreFactory.createDataStore(externalPort, this.servers, this.serverStatus, this.blockingQueue);
+		this.internalPort = internalPort;
+		this.internalPorts = internalPorts;
+		this.dataStore = DataStoreFactory.createDataStore(externalPort, this.servers, this.serverStatus, this.blockingQueue,
+				this.internalPorts);
 		try {
 			this.datagramSocket = new DatagramSocket(datagramPort);
 		} catch (Exception e) {
@@ -52,6 +59,12 @@ public class KeyValueServer {
 		try {
 			this.multicastSocket = new MulticastSocket(4446);
 			this.multicastSocket.joinGroup(this.broadcastIP);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			this.internalSocket = new ServerSocket(internalPort,
+					0, InetAddress.getByName("127.0.0.1"));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -64,20 +77,25 @@ public class KeyValueServer {
 		List<Integer> servers = new ArrayList<Integer>();
 		CopyOnWriteArrayList<Boolean> serverStatus = new CopyOnWriteArrayList<Boolean>();
 		int datagramPort = -1;
+		int internalPort = -1;
+		List<Integer> internalPorts = new ArrayList<Integer>();
 		while (sc.hasNextLine()) {
 			String currentLine = sc.nextLine();
 			int serverPort = Integer.parseInt(currentLine.split(",")[0]);
 			int currentdatagramPort = Integer.parseInt(currentLine.split(",")[1]);
+			int currentInternalPort = Integer.parseInt(currentLine.split(",")[2]);
 			if (serverPort == externalPort) {
 				datagramPort = currentdatagramPort;
+				internalPort = currentInternalPort;
 			}
 			servers.add(serverPort);
+			internalPorts.add(internalPort);
 			serverStatus.add(true);
 		}
 		sc.close();
 		InetAddress broadcastIP = InetAddress.getByName("224.0.113.0");
 		KeyValueServer keyValueServer = new KeyValueServer(externalPort,
-				broadcastIP, servers, datagramPort, serverStatus);
+				broadcastIP, servers, datagramPort, serverStatus, internalPort, internalPorts);
 		keyValueServer.start();
 	}
 	
@@ -87,6 +105,8 @@ public class KeyValueServer {
 		Thread t2 = new Thread(new MulticastSenderThread(getDatagramSocket(),
 				getBroadcastIP(), getBlockingQueue()));
 		t2.start();
+		Thread t3 = new Thread (new InternalPortThread(internalSocket));
+		t3.start();
 		// Broadcast to all servers that the server started
 		JsonObject serverAliveMessage = new JsonObject();
 		serverAliveMessage.addProperty("operation", "SERVER_UP");

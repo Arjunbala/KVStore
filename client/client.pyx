@@ -63,7 +63,7 @@ def get_value_worker(socket, queue, data, worker_num):
         json_response = json.loads(response)
         if json_response["status"] == "success":
             queue.put(json_response["value"])
-            print("Worker " + str(worker_num) + " got value: " + str(json_response["value"]))
+            #print("Worker " + str(worker_num) + " got value: " + str(json_response["value"]))
     except socket.error, msg:
         print("Worker " + str(worker_num) + " failed to get a value!")
         print "Couldnt connect with the socket-server: " % msg
@@ -85,8 +85,8 @@ def getValueForKey(key, primary_server):
         thread.join()
     value_count = {}
     response_status = -1
-    response_value = ""
-    print('Quorum for key ' + str(key))
+    response_value = "\0"
+    #print('Quorum for key ' + str(key))
     if not values_queue.empty():
         while not values_queue.empty():
             value = values_queue.get()
@@ -102,6 +102,8 @@ def getValueForKey(key, primary_server):
                 max_count = count
                 max_value = value
         response_value = max_value
+        if response_value is None:
+            response_value = "\0"
     return response_status, response_value
 
 def setValueForKey(key, value, primary_server):
@@ -109,6 +111,7 @@ def setValueForKey(key, value, primary_server):
     data['operation'] = 'PUT'
     data['key'] = key
     data['value'] = value
+    #print(data)
     json_data = json.dumps(data)
     failovers = 0
     while failovers < len(connection_sockets):
@@ -123,12 +126,14 @@ def setValueForKey(key, value, primary_server):
     try:        
         response = connection_sockets[primary_server].recv(2048)
         json_response = json.loads(response)
-        old_value = ""
+        old_value = "\0"
         response_status = -1
         if json_response["status"] == "success":
             old_value = json_response["value"]
+            if old_value is None:
+                old_value = "\0"
             response_status = 1
         return response_status, old_value
     except socket.error, msg:
         print "Exception. Returning empty"
-        return -1, ""
+        return -1, "\0"

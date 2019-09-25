@@ -13,3 +13,5 @@ sudo cp libclient.so /usr/lib/
 
 To run the test
 ./test
+
+gcc -I/usr/include/python2.7 -o correctness_test_single_client correctness_test_single_client.c -lpython2.7 -lclient -lpthread -DKVSTORE_SIZE=1000 -DSLEEP_TIME_US=0

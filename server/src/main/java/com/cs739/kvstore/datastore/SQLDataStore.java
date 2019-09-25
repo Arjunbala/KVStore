@@ -21,14 +21,18 @@ public class SQLDataStore implements DataStore {
 	String mDbName;
 	Connection mDatabaseConnection;
 	List<Integer> servers;
+	List<Integer> internalPorts;
 	CopyOnWriteArrayList<Boolean> serverStatus;
 	BlockingQueue<String> blockingQueue;
+	Integer port;
 
 	public SQLDataStore(int port, List<Integer> servers, CopyOnWriteArrayList<Boolean> serverStatus,
-			BlockingQueue<String> blockingQueue) {
+			BlockingQueue<String> blockingQueue, List<Integer> internalPorts) {
 		this.servers = servers;
+		this.internalPorts = internalPorts;
 		this.serverStatus = serverStatus;
 		this.blockingQueue = blockingQueue;
+		this.port = port;
 		mDbName = "kvstore_" + Integer.toString(port) + ".db";
 		establishConnection();
 		try {
@@ -68,13 +72,13 @@ public class SQLDataStore implements DataStore {
 			seqRequest.addProperty("operation", "GET_SEQ_NO");
 			seqRequest.addProperty("key", key);
 			for (int i = 0; i < serverStatus.size(); ++i) {
-				if (serverStatus.get(i)) {
+				if (serverStatus.get(i) && (servers.get(i) != port)) {
 					System.out.println("Contacting server " + Integer.toString(servers.get(i)));
 					Socket contactSocket = null;
 					PrintWriter contactWriter = null;
 					Scanner incoming = null;
 					try {
-						contactSocket = new Socket("127.0.0.1", servers.get(i));
+						contactSocket = new Socket("127.0.0.1", internalPorts.get(i));
 						contactWriter = new PrintWriter(contactSocket.getOutputStream(), true);
 						incoming = new Scanner(contactSocket.getInputStream());
 						contactWriter.println(seqRequest.toString());
@@ -89,6 +93,7 @@ public class SQLDataStore implements DataStore {
 							}
 							break;
 						}
+						contactSocket.close();
 					} catch (Exception e) {
 						serverStatus.set(i, false);
 						JsonObject serverDeadMessage = new JsonObject();

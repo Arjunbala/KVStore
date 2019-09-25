@@ -36,6 +36,9 @@ public class ClientRequestHandlerThread implements Runnable {
 	public int hashFunc(String key) {
 		System.out.println();
 		int primary = key.hashCode() % servers.size();
+		if(primary < 0) {
+			primary = primary*-1;
+		}
 		while (!serverStatus.get(primary)) {
 			primary = (primary + 1) % servers.size();
 		}
