@@ -37,14 +37,16 @@ cdef public int kv739_shutdown():
     return -1
 
 cdef public int kv739_get(char * key, char * value):
-    val = getValueForKey(key, primary_server)
-    strcpy(value, val)
-    return -1
+    status, val = getValueForKey(key, primary_server)
+    if status == 1:
+        strcpy(value, val)
+    return status
 
 cdef public int kv739_put(char * key, char * value, char * old_value):
-    oldval = setValueForKey(key,value, primary_server)
-    strcpy(old_value, oldval)
-    return -1
+    status, oldval = setValueForKey(key,value, primary_server)
+    if status == 1:
+        strcpy(old_value, oldval)
+    return status
 
 def cleanup(connection_sockets):
     for i in range(0, len(connection_sockets)):
@@ -73,11 +75,17 @@ def getValueForKey(key, primary_server):
     print('Sent...')
     # connection_sockets[primary_server].send('')
     try:
-        valueFromServer = connection_sockets[primary_server].recv(2048)
-        return valueFromServer
+        value = ""
+        response_status = -1
+        response = connection_sockets[primary_server].recv(2048)
+        json_response = json.loads(response)
+        if json_response["status"] == "success":
+            value = json_response["value"]
+            response_status = 1
+        return response_status, value
     except socket.error, msg:
         print "Exception. Returning empty"
-        return ""
+        return -1, ""
 
 def setValueForKey(key, value, primary_server):
     data = {}
@@ -96,8 +104,14 @@ def setValueForKey(key, value, primary_server):
             print "New primary server is " % primary_server
             failovers = failovers + 1
     try:        
-        valueFromServer = connection_sockets[primary_server].recv(2048)
-        return valueFromServer
+        response = connection_sockets[primary_server].recv(2048)
+        json_response = json.loads(response)
+        old_value = ""
+        response_status = -1
+        if json_response["status"] == "success":
+            old_value = json_response["value"]
+            response_status = 1
+        return response_status, old_value
     except socket.error, msg:
         print "Exception. Returning empty"
-        return ""
+        return -1, ""

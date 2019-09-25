@@ -2,6 +2,7 @@ package com.cs739.kvstore;
 
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
+import java.sql.SQLException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.cs739.kvstore.datastore.DataStore;
@@ -46,7 +47,11 @@ public class MulticastReceiverThread implements Runnable {
 				String key = jsonObject.get("key").getAsString();
 				String value = jsonObject.get("value").getAsString();
 				int updateSequenceNumber = jsonObject.get("seq").getAsInt();
-				dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber); 
+				try {
+					dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE, updateSequenceNumber);
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
 			}
 		}		
 	}
