@@ -3,6 +3,7 @@ package com.cs739.kvstore;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.BlockingQueue;
@@ -61,9 +62,18 @@ public class ClientRequestHandlerThread implements Runnable {
 			System.out.println("Client Request: " + request);
 			JsonObject jsonObject = new JsonParser().parse(request).getAsJsonObject();
 			String operation = jsonObject.get("operation").getAsString();
+			JsonObject response = new JsonObject();
 			if (operation.equals("GET")) {
 				String key = jsonObject.get("key").getAsString();
-				out.println(dataStore.getValue(key));
+				try {
+					String value = dataStore.getValue(key);
+					response.addProperty("status", "success");
+					response.addProperty("value", value);
+				} catch (SQLException e) {
+					response.addProperty("status", "failure");
+					e.printStackTrace();
+				}
+				out.println(response.toString());
 			} else if (operation.equals("PUT")) {
 				// TODO: Put hash logic
 				String key = jsonObject.get("key").getAsString();
@@ -71,17 +81,26 @@ public class ClientRequestHandlerThread implements Runnable {
 				int primary = hashFunc(key);
 				// This is the primary
 				if (servers.get(primary) == externalPort) {
-					// TODO : Continue here
-					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE,
-							-1);
-					out.println(putValueResponse.getOldValue());
-					jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
-					// Broadcast to other servers
-					blockingQueue.add(jsonObject.toString());
+					try {
+						PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_PRIMARY_UPDATE,
+								-1);
+						response.addProperty("status", "success");
+						response.addProperty("value", putValueResponse.getOldValue());
+						jsonObject.addProperty("seq", putValueResponse.getSequenceNumber());
+						// Broadcast to other servers
+						blockingQueue.add(jsonObject.toString());
+					} catch (SQLException e) {
+						response.addProperty("status", "failure");
+						e.printStackTrace();
+					}
+					out.println(response.toString());
 				} else {
+					try {
 					PutValueResponse putValueResponse = dataStore.putValue(key, value, PutValueRequest.APPLY_FOLLOWER_UPDATE,
 							-1);
-					out.println(putValueResponse.getOldValue());
+					response.addProperty("status", "success");
+					response.addProperty("value", putValueResponse.getOldValue());
+					out.println(response.toString());
 					boolean forwarded = false;
 					while (!forwarded) {
 						System.out.println("Primary server is " + servers.get(primary));
@@ -106,6 +125,11 @@ public class ClientRequestHandlerThread implements Runnable {
 							primary = hashFunc(key);
 							e.printStackTrace();
 						}
+					}
+					} catch (SQLException e) {
+						response.addProperty("status", "failure");
+						out.println(response.toString());
+						e.printStackTrace();
 					}
 				}
 			} else if (operation.equals("GET_SEQ_NO")) {

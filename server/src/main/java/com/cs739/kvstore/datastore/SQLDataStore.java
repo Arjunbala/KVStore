@@ -44,154 +44,144 @@ public class SQLDataStore implements DataStore {
 
 	@Override
 	public synchronized PutValueResponse putValue(String key, String value, PutValueRequest type, 
-			int updateSequenceNumber) {
+			int updateSequenceNumber) throws SQLException {
 		// First, need to check old value
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
-		try {
-			ResultSet res = executeQuery(queryForPresenceOfKey);
-			int size = 0;
-			String oldValue = null;
-			int seqToReturn = 0;
-			Integer stored_seqno = 0;
-			boolean might_be_stale = true;
-			while(res.next()) {
-				size++;
-				oldValue = res.getString("value");
-				stored_seqno = res.getInt("sequence_number");
-				might_be_stale = res.getBoolean("might_be_stale");
-			}
-			System.out.println(might_be_stale);
-			assert(size == 0 || size == 1);
-			if(might_be_stale && type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
-				// Need to contact other servers for latest sequence number
-				System.out.println("Sequence number for key might be stale");
-				JsonObject seqRequest = new JsonObject();
-				seqRequest.addProperty("operation", "GET_SEQ_NO");
-				seqRequest.addProperty("key", key);
-				for (int i = 0; i < serverStatus.size(); ++i) {
-					if (serverStatus.get(i)) {
-						System.out.println("Contacting server " + Integer.toString(servers.get(i)));
-						Socket contactSocket = null;
-						PrintWriter contactWriter = null;
-						Scanner incoming = null;
-						try {
-							contactSocket = new Socket("127.0.0.1", servers.get(i));
-							contactWriter = new PrintWriter(contactSocket.getOutputStream(), true);
-							incoming = new Scanner(contactSocket.getInputStream());
-							contactWriter.println(seqRequest.toString());
-							while(incoming.hasNextLine()) {
-								String response = incoming.nextLine();
-								System.out.println("Response from server " +
-										Integer.toString(servers.get(i)) + " is " + response);
-								JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
-								Integer seq = jsonObject.get("seq").getAsInt();
-								if(seq > stored_seqno) {
-									stored_seqno = seq;
-								}
-								break;
+		ResultSet res = executeQuery(queryForPresenceOfKey);
+		int size = 0;
+		String oldValue = null;
+		int seqToReturn = 0;
+		Integer stored_seqno = 0;
+		boolean might_be_stale = true;
+		while(res.next()) {
+			size++;
+			oldValue = res.getString("value");
+			stored_seqno = res.getInt("sequence_number");
+			might_be_stale = res.getBoolean("might_be_stale");
+		}
+		System.out.println(might_be_stale);
+		assert(size == 0 || size == 1);
+		if(might_be_stale && type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+			// Need to contact other servers for latest sequence number
+			System.out.println("Sequence number for key might be stale");
+			JsonObject seqRequest = new JsonObject();
+			seqRequest.addProperty("operation", "GET_SEQ_NO");
+			seqRequest.addProperty("key", key);
+			for (int i = 0; i < serverStatus.size(); ++i) {
+				if (serverStatus.get(i)) {
+					System.out.println("Contacting server " + Integer.toString(servers.get(i)));
+					Socket contactSocket = null;
+					PrintWriter contactWriter = null;
+					Scanner incoming = null;
+					try {
+						contactSocket = new Socket("127.0.0.1", servers.get(i));
+						contactWriter = new PrintWriter(contactSocket.getOutputStream(), true);
+						incoming = new Scanner(contactSocket.getInputStream());
+						contactWriter.println(seqRequest.toString());
+						while(incoming.hasNextLine()) {
+							String response = incoming.nextLine();
+							System.out.println("Response from server " +
+									Integer.toString(servers.get(i)) + " is " + response);
+							JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
+							Integer seq = jsonObject.get("seq").getAsInt();
+							if(seq > stored_seqno) {
+								stored_seqno = seq;
 							}
-						} catch (Exception e) {
-							serverStatus.set(i, false);
-							JsonObject serverDeadMessage = new JsonObject();
-							serverDeadMessage.addProperty("operation", "SERVER_DOWN");
-							serverDeadMessage.addProperty("server", i);
-							blockingQueue.add(serverDeadMessage.toString());
-							e.printStackTrace();
+							break;
 						}
+					} catch (Exception e) {
+						serverStatus.set(i, false);
+						JsonObject serverDeadMessage = new JsonObject();
+						serverDeadMessage.addProperty("operation", "SERVER_DOWN");
+						serverDeadMessage.addProperty("server", i);
+						blockingQueue.add(serverDeadMessage.toString());
+						e.printStackTrace();
 					}
 				}
 			}
-			if(size == 0 ) {
-				// need to insert value for key
-				int seqno = 0;
-				boolean isDirty = false;
-				if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
-					seqno = updateSequenceNumber;
-					isDirty = false;
-				} else if (type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
-					seqno = stored_seqno;
-					isDirty = true;
-				} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
-					seqno = stored_seqno + 1;
-					isDirty = false;
-				}
-				System.out.println(stored_seqno + ":" + seqno);
-				if(seqno >= stored_seqno) {
-					seqToReturn = seqno;
-					String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
-							.append(key)
-							.append("\",\"")
-							.append(value)
-							.append("\",")
-							.append(seqno)
-							.append(",\"")
-							.append(isDirty)
-							.append("\",\"")
-							.append("false")
-							.append("\")").toString();
-					System.out.println(insertQuery);
-					executeUpdate(insertQuery);
-				}
-			} else {
-				// need to update value for key
-				int seqno = stored_seqno;
-				boolean isDirty = false;
-				if(type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
-					seqno = stored_seqno;
-					isDirty = true;
-				} else if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
-					seqno = updateSequenceNumber;
-					isDirty = false;
-				} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
-					seqno = stored_seqno + 1;
-					isDirty = false;
-				}
-				if(seqno >= stored_seqno) {
-					seqToReturn = seqno;
-					String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
-			             	.append(value)
-			             	.append("\",sequence_number=")
-			             	.append(seqno)
-			             	.append(",dirty=\"")
-			             	.append(isDirty)
-			             	.append("\",might_be_stale=\"")
-							.append("false")
-			             	.append("\" where key=\"")
-			                .append(key)
-			                .append("\"").toString();
-					System.out.println(updateQuery);
-					executeUpdate(updateQuery);
-				}
-			}
-			mDatabaseConnection.commit();
-			return new PutValueResponse(oldValue, seqToReturn);
-		} catch (SQLException e) {
-			e.printStackTrace();
 		}
-		return null;
+		if(size == 0 ) {
+			// need to insert value for key
+			int seqno = 0;
+			boolean isDirty = false;
+			if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
+				seqno = updateSequenceNumber;
+				isDirty = false;
+			} else if (type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
+				seqno = stored_seqno;
+				isDirty = true;
+			} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+				seqno = stored_seqno + 1;
+				isDirty = false;
+			}
+			System.out.println(stored_seqno + ":" + seqno);
+			if(seqno >= stored_seqno) {
+				seqToReturn = seqno;
+				String insertQuery = new StringBuilder("INSERT INTO kvstore_schema values(\"")
+						.append(key)
+						.append("\",\"")
+						.append(value)
+						.append("\",")
+						.append(seqno)
+						.append(",\"")
+						.append(isDirty)
+						.append("\",\"")
+						.append("false")
+						.append("\")").toString();
+				System.out.println(insertQuery);
+				executeUpdate(insertQuery);
+			}
+		} else {
+			// need to update value for key
+			int seqno = stored_seqno;
+			boolean isDirty = false;
+			if(type == PutValueRequest.APPLY_FOLLOWER_UPDATE) {
+				seqno = stored_seqno;
+				isDirty = true;
+			} else if (type == PutValueRequest.APPLY_FOLLOWER_PERSIST) {
+				seqno = updateSequenceNumber;
+				isDirty = false;
+			} else if (type == PutValueRequest.APPLY_PRIMARY_UPDATE) {
+				seqno = stored_seqno + 1;
+				isDirty = false;
+			}
+			if(seqno >= stored_seqno) {
+				seqToReturn = seqno;
+				String updateQuery = new StringBuilder("UPDATE kvstore_schema set value=\"")
+						.append(value)
+						.append("\",sequence_number=")
+						.append(seqno)
+						.append(",dirty=\"")
+						.append(isDirty)
+						.append("\",might_be_stale=\"")
+						.append("false")
+						.append("\" where key=\"")
+						.append(key)
+						.append("\"").toString();
+				System.out.println(updateQuery);
+				executeUpdate(updateQuery);
+			}
+		}
+		mDatabaseConnection.commit();
+		return new PutValueResponse(oldValue, seqToReturn);
 	}
 
 	@Override
-	public String getValue(String key) {
+	public String getValue(String key) throws SQLException {
 		String queryForPresenceOfKey = "SELECT * FROM kvstore_schema where key=\"" + key + "\"";
-		try {
-			ResultSet res = executeQuery(queryForPresenceOfKey);
-			int size = 0;
-			String value = null;
-			while(res.next()) {
-				size++;
-				value = res.getString("value");
-			}
-			assert(size == 0 || size == 1);
-			if(size == 0) {
-				return null;
-			} else {
-				return value;
-			}
-		} catch(SQLException e) {
-			e.printStackTrace();
+		ResultSet res = executeQuery(queryForPresenceOfKey);
+		int size = 0;
+		String value = null;
+		while(res.next()) {
+			size++;
+			value = res.getString("value");
 		}
-		return null;
+		assert(size == 0 || size == 1);
+		if(size == 0) {
+			return null;
+		} else {
+			return value;
+		}
 	}
 	
 	@Override
