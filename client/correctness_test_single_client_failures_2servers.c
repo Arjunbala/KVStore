@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     old_val = (char*) malloc(MAX_VAL_SIZE * sizeof(char));
     for(int i=0;i<KVSTORE_SIZE;i++) {
        ret = kv739_put(keys[i], values[i], old_val);
-       assert(ret == 0); // there should be no failure
+       assert(ret == 1); // there should be no failure
        assert(old_val[0] == '\0'); // old value should be NULL
     }
 
@@ -104,17 +104,17 @@ int main(int argc, char *argv[])
     gettimeofday(&tv1, NULL);
     for(int i=0;i<KVSTORE_SIZE;i++) {
         ret = kv739_get(keys[i], old_val);
-        assert(ret == 0); // there should be no failure
+        assert(ret == 1); // there should be no failure
         if(strcmp(old_val, values[i]) != 0) {
             errors++;
         }
     }
     gettimeofday(&tv2, NULL);
-    printf("Error in reading back same value: %f percent", (errors*100.0)/KVSTORE_SIZE);
-    printf("Read throughput = %f\n keys/sec", (KVSTORE_SIZE * 1.0)/get_time_elapsed_sec(tv1,tv2));
+    printf("Error in reading back same value: %f percent\n", (errors*100.0)/KVSTORE_SIZE);
+    printf("Read throughput = %f keys/sec\n", (KVSTORE_SIZE * 1.0)/get_time_elapsed_sec(tv1,tv2));
 
     // Now restart the killed server and check what happens
-    strcpy(system_command, "bash ../server/start_servers.sh -p 8003,8004");
+    strcpy(system_command, "bash ../server/start_servers.sh -r -p 8003,8004");
     ret = system(system_command);
 
     // Wait for 5000 ms for kill to take effect
@@ -125,14 +125,15 @@ int main(int argc, char *argv[])
     gettimeofday(&tv1, NULL);
     for(int i=0;i<KVSTORE_SIZE;i++) {
         ret = kv739_get(keys[i], old_val);
-        assert(ret == 0); // there should be no failure
+        assert(ret == 1); // there should be no failure
         if(strcmp(old_val, values[i]) != 0) {
+            printf("%d %s : %s\n", i, old_val, values[i]);
             errors++;
         }
     }
     gettimeofday(&tv2, NULL);
-    printf("Error in reading back same value: %f percent", (errors*100.0)/KVSTORE_SIZE);
-    printf("Read throughput = %f\n keys/sec", (KVSTORE_SIZE * 1.0)/get_time_elapsed_sec(tv1,tv2));
+    printf("Error in reading back same value: %f percent\n", (errors*100.0)/KVSTORE_SIZE);
+    printf("Read throughput = %f keys/sec\n", (KVSTORE_SIZE * 1.0)/get_time_elapsed_sec(tv1,tv2));
 
     Py_Finalize();
     return 0;

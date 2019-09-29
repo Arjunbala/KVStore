@@ -6,36 +6,38 @@ import socket
 import random
 import json
 
-connection_sockets = []
 primary_server = -1
+servers = []
 
-cdef public int kv739_init(char **servers, int num_servers):
-    cdef char **srvs = servers
+cdef public int kv739_init(char **connection_servers, int num_servers):
+    cdef char **srvs = connection_servers
     cdef int i
 
     # Establish socket connection to each of the servers
+    success = 0
     for i in range (0,num_servers):
-        print ("Establishing connection to " + srvs[i])
-        server = srvs[i]
+        #print ("Establishing connection to " + srvs[i])
+        server = srvs[i][:]
+        servers.append(server)
         try:
             sock = socket.socket()
             sock.connect((server.split(":")[0], int(server.split(":")[1])))
-            connection_sockets.append(sock)
+            success = success + 1
         except socket.error, exc:
             print "Caught exception socket.error : %s" % exc
         
-    if(len(connection_sockets) < num_servers):
+    if(success < num_servers):
         print "Could not connect to all servers in init"
-        cleanup(connection_sockets)
+        cleanup(servers)
         return -1
 
     # Pick one server to communicate to as a primary. We fallback to secondaries only in event of failure
-    primary_server = random.randint(0, len(connection_sockets)-1)
+    primary_server = random.randint(0, num_servers-1)
     print("Assigning primary server")
     return 0
 
 cdef public int kv739_shutdown():
-    cleanup(connection_sockets)
+    cleanup(servers)
     return -1
 
 cdef public int kv739_get(char * key, char * value):
@@ -50,23 +52,26 @@ cdef public int kv739_put(char * key, char * value, char * old_value):
         strcpy(old_value, oldval)
     return status
 
-def cleanup(connection_sockets):
-    for i in range(0, len(connection_sockets)):
-        connection_sockets[i].close()
+def cleanup(servers):
     primary_server = -1
-    connection_sockets = []
+    servers = []
 
-def get_value_worker(socket, queue, data, worker_num):
+def get_value_worker(sock, queue, data, worker_num):
     try:
-        socket.sendall(data + "\n")
-        response = socket.recv(2048)
-        json_response = json.loads(response)
-        if json_response["status"] == "success":
-            queue.put(json_response["value"])
-            #print("Worker " + str(worker_num) + " got value: " + str(json_response["value"]))
+        sock.sendall(data + "\n")
+        response = sock.recv(2048)
+        if response is not None:
+            json_response = json.loads(response)
+            if json_response["status"] == "success":
+                queue.put(json_response["value"])
+                #print("Worker " + str(worker_num) + " got value: " + str(json_response["value"]))
     except socket.error, msg:
         print("Worker " + str(worker_num) + " failed to get a value!")
-        print "Couldnt connect with the socket-server: " % msg
+        print "Couldnt connect with the socket-server: "
+    except ValueError:
+        print("Danish fucked us")
+    finally:
+        sock.close()
 
 def getValueForKey(key, primary_server):
     values_queue = Queue()
@@ -76,11 +81,17 @@ def getValueForKey(key, primary_server):
     json_data = json.dumps(data)
     # Attempt to send request to primary server
     threads = []
-    for i in range(len(connection_sockets)):
-        t = Thread(target=get_value_worker(connection_sockets[i], values_queue,
+    for i in range(len(servers)):
+        server = servers[i]
+        try:
+            sock = socket.socket()
+            sock.connect((server.split(":")[0], int(server.split(":")[1]))) 
+            t = Thread(target=get_value_worker(sock, values_queue,
                                           json_data, i))
-        t.start()
-        threads.append(t)
+            t.start()
+            threads.append(t)
+        except socket.error:
+            print("Could not connect to server ", server)
     for thread in threads:
         thread.join()
     value_count = {}
@@ -114,17 +125,21 @@ def setValueForKey(key, value, primary_server):
     #print(data)
     json_data = json.dumps(data)
     failovers = 0
-    while failovers < len(connection_sockets):
+    sock = socket.socket()
+    while failovers < len(servers):
         try:
-            connection_sockets[primary_server].sendall(json_data + "\n")
+            server = servers[primary_server]
+            sock.connect((server.split(":")[0], int(server.split(":")[1])))
+            sock.sendall(json_data + "\n")
             break
         except socket.error, msg:
             print "Couldnt connect with the socket-server: initiating fail over" % msg
-            primary_server = (primary_server + 1) % len(connection_sockets)
+            primary_server = (primary_server + 1) % len(servers)
             print "New primary server is " % primary_server
             failovers = failovers + 1
+            sock.close()
     try:        
-        response = connection_sockets[primary_server].recv(2048)
+        response = sock.recv(2048)
         json_response = json.loads(response)
         old_value = "\0"
         response_status = -1
@@ -137,3 +152,5 @@ def setValueForKey(key, value, primary_server):
     except socket.error, msg:
         print "Exception. Returning empty"
         return -1, "\0"
+    finally:
+        sock.close()
