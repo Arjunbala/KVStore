@@ -114,6 +114,7 @@ def setValueForKey(key, value, primary_server):
     #print(data)
     json_data = json.dumps(data)
     failovers = 0
+    print "Primary is " % primary_server
     while failovers < len(connection_sockets):
         try:
             connection_sockets[primary_server].sendall(json_data + "\n")
@@ -132,7 +133,9 @@ def setValueForKey(key, value, primary_server):
             old_value = json_response["value"]
             if old_value is None:
                 old_value = "\0"
-            response_status = 1
+                response_status = 1
+            else:
+                response_status = 0
         return response_status, old_value
     except socket.error, msg:
         print "Exception. Returning empty"
