@@ -48,7 +48,7 @@ cdef public int kv739_get(char * key, char * value):
 
 cdef public int kv739_put(char * key, char * value, char * old_value):
     status, oldval = setValueForKey(key,value, primary_server)
-    if status == 1:
+    if status == 0:
         strcpy(old_value, oldval)
     return status
 

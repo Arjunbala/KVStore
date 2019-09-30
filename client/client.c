@@ -2272,7 +2272,7 @@ int kv739_get(char *__pyx_v_key, char *__pyx_v_value) {
  * 
  * cdef public int kv739_put(char * key, char * value, char * old_value):             # <<<<<<<<<<<<<<
  *     status, oldval = setValueForKey(key,value, primary_server)
- *     if status == 1:
+ *     if status == 0:
  */
 
 int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
@@ -2297,7 +2297,7 @@ int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
  * 
  * cdef public int kv739_put(char * key, char * value, char * old_value):
  *     status, oldval = setValueForKey(key,value, primary_server)             # <<<<<<<<<<<<<<
- *     if status == 1:
+ *     if status == 0:
  *         strcpy(old_value, oldval)
  */
   __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_setValueForKey); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 50, __pyx_L1_error)
@@ -2416,11 +2416,11 @@ int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
   /* "client.pyx":51
  * cdef public int kv739_put(char * key, char * value, char * old_value):
  *     status, oldval = setValueForKey(key,value, primary_server)
- *     if status == 1:             # <<<<<<<<<<<<<<
+ *     if status == 0:             # <<<<<<<<<<<<<<
  *         strcpy(old_value, oldval)
  *     return status
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_status, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_status, __pyx_int_0, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_10 < 0)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -2428,7 +2428,7 @@ int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
 
     /* "client.pyx":52
  *     status, oldval = setValueForKey(key,value, primary_server)
- *     if status == 1:
+ *     if status == 0:
  *         strcpy(old_value, oldval)             # <<<<<<<<<<<<<<
  *     return status
  * 
@@ -2439,14 +2439,14 @@ int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
     /* "client.pyx":51
  * cdef public int kv739_put(char * key, char * value, char * old_value):
  *     status, oldval = setValueForKey(key,value, primary_server)
- *     if status == 1:             # <<<<<<<<<<<<<<
+ *     if status == 0:             # <<<<<<<<<<<<<<
  *         strcpy(old_value, oldval)
  *     return status
  */
   }
 
   /* "client.pyx":53
- *     if status == 1:
+ *     if status == 0:
  *         strcpy(old_value, oldval)
  *     return status             # <<<<<<<<<<<<<<
  * 
@@ -2461,7 +2461,7 @@ int kv739_put(char *__pyx_v_key, char *__pyx_v_value, char *__pyx_v_old_value) {
  * 
  * cdef public int kv739_put(char * key, char * value, char * old_value):             # <<<<<<<<<<<<<<
  *     status, oldval = setValueForKey(key,value, primary_server)
- *     if status == 1:
+ *     if status == 0:
  */
 
   /* function exit code */
@@ -4865,7 +4865,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
  *             old_value = json_response["value"]
  *             if old_value is None:             # <<<<<<<<<<<<<<
  *                 old_value = "\0"
- *             response_status = 1
+ *                 response_status = 1
  */
           __pyx_t_5 = (__pyx_v_old_value == Py_None);
           __pyx_t_13 = (__pyx_t_5 != 0);
@@ -4875,29 +4875,42 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
  *             old_value = json_response["value"]
  *             if old_value is None:
  *                 old_value = "\0"             # <<<<<<<<<<<<<<
- *             response_status = 1
- *         return response_status, old_value
+ *                 response_status = 1
+ *             else:
  */
             __Pyx_INCREF(__pyx_kp_s__3);
             __Pyx_DECREF_SET(__pyx_v_old_value, __pyx_kp_s__3);
+
+            /* "client.pyx":150
+ *             if old_value is None:
+ *                 old_value = "\0"
+ *                 response_status = 1             # <<<<<<<<<<<<<<
+ *             else:
+ *                 response_status = 0
+ */
+            __pyx_v_response_status = 1;
 
             /* "client.pyx":148
  *         if json_response["status"] == "success":
  *             old_value = json_response["value"]
  *             if old_value is None:             # <<<<<<<<<<<<<<
  *                 old_value = "\0"
- *             response_status = 1
+ *                 response_status = 1
  */
+            goto __pyx_L25;
           }
 
-          /* "client.pyx":150
- *             if old_value is None:
- *                 old_value = "\0"
- *             response_status = 1             # <<<<<<<<<<<<<<
+          /* "client.pyx":152
+ *                 response_status = 1
+ *             else:
+ *                 response_status = 0             # <<<<<<<<<<<<<<
  *         return response_status, old_value
  *     except socket.error, msg:
  */
-          __pyx_v_response_status = 1;
+          /*else*/ {
+            __pyx_v_response_status = 0;
+          }
+          __pyx_L25:;
 
           /* "client.pyx":146
  *         old_value = "\0"
@@ -4908,17 +4921,17 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
  */
         }
 
-        /* "client.pyx":151
- *                 old_value = "\0"
- *             response_status = 1
+        /* "client.pyx":153
+ *             else:
+ *                 response_status = 0
  *         return response_status, old_value             # <<<<<<<<<<<<<<
  *     except socket.error, msg:
  *         print "Exception. Returning empty"
  */
         __Pyx_XDECREF(__pyx_r);
-        __pyx_t_1 = __Pyx_PyInt_From_long(__pyx_v_response_status); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L18_error)
+        __pyx_t_1 = __Pyx_PyInt_From_long(__pyx_v_response_status); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 153, __pyx_L18_error)
         __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_10 = PyTuple_New(2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 151, __pyx_L18_error)
+        __pyx_t_10 = PyTuple_New(2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 153, __pyx_L18_error)
         __Pyx_GOTREF(__pyx_t_10);
         __Pyx_GIVEREF(__pyx_t_1);
         PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_1);
@@ -4946,17 +4959,17 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-      /* "client.pyx":152
- *             response_status = 1
+      /* "client.pyx":154
+ *                 response_status = 0
  *         return response_status, old_value
  *     except socket.error, msg:             # <<<<<<<<<<<<<<
  *         print "Exception. Returning empty"
  *         return -1, "\0"
  */
       __Pyx_ErrFetch(&__pyx_t_10, &__pyx_t_1, &__pyx_t_2);
-      __Pyx_GetModuleGlobalName(__pyx_t_11, __pyx_n_s_socket); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 152, __pyx_L20_except_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_11, __pyx_n_s_socket); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 154, __pyx_L20_except_error)
       __Pyx_GOTREF(__pyx_t_11);
-      __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_11, __pyx_n_s_error); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 152, __pyx_L20_except_error)
+      __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_11, __pyx_n_s_error); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 154, __pyx_L20_except_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
       __pyx_t_12 = __Pyx_PyErr_GivenExceptionMatches(__pyx_t_10, __pyx_t_3);
@@ -4965,23 +4978,23 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
       __pyx_t_10 = 0; __pyx_t_1 = 0; __pyx_t_2 = 0;
       if (__pyx_t_12) {
         __Pyx_AddTraceback("client.setValueForKey", __pyx_clineno, __pyx_lineno, __pyx_filename);
-        if (__Pyx_GetException(&__pyx_t_2, &__pyx_t_1, &__pyx_t_10) < 0) __PYX_ERR(0, 152, __pyx_L20_except_error)
+        if (__Pyx_GetException(&__pyx_t_2, &__pyx_t_1, &__pyx_t_10) < 0) __PYX_ERR(0, 154, __pyx_L20_except_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_GOTREF(__pyx_t_10);
         __Pyx_INCREF(__pyx_t_1);
         __Pyx_XDECREF_SET(__pyx_v_msg, __pyx_t_1);
 
-        /* "client.pyx":153
+        /* "client.pyx":155
  *         return response_status, old_value
  *     except socket.error, msg:
  *         print "Exception. Returning empty"             # <<<<<<<<<<<<<<
  *         return -1, "\0"
  *     finally:
  */
-        if (__Pyx_PrintOne(0, __pyx_kp_s_Exception_Returning_empty) < 0) __PYX_ERR(0, 153, __pyx_L20_except_error)
+        if (__Pyx_PrintOne(0, __pyx_kp_s_Exception_Returning_empty) < 0) __PYX_ERR(0, 155, __pyx_L20_except_error)
 
-        /* "client.pyx":154
+        /* "client.pyx":156
  *     except socket.error, msg:
  *         print "Exception. Returning empty"
  *         return -1, "\0"             # <<<<<<<<<<<<<<
@@ -5026,7 +5039,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
     }
   }
 
-  /* "client.pyx":156
+  /* "client.pyx":158
  *         return -1, "\0"
  *     finally:
  *         sock.close()             # <<<<<<<<<<<<<<
@@ -5053,7 +5066,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
       __Pyx_XGOTREF(__pyx_t_18);
       __pyx_t_12 = __pyx_lineno; __pyx_t_14 = __pyx_clineno; __pyx_t_15 = __pyx_filename;
       {
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_sock, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L29_error)
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_sock, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 158, __pyx_L29_error)
         __Pyx_GOTREF(__pyx_t_1);
         __pyx_t_2 = NULL;
         if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_1))) {
@@ -5067,7 +5080,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
         }
         __pyx_t_10 = (__pyx_t_2) ? __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_2) : __Pyx_PyObject_CallNoArg(__pyx_t_1);
         __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-        if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 156, __pyx_L29_error)
+        if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 158, __pyx_L29_error)
         __Pyx_GOTREF(__pyx_t_10);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
         __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
@@ -5101,7 +5114,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
     __pyx_L15_return: {
       __pyx_t_18 = __pyx_r;
       __pyx_r = 0;
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_sock, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_sock, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 158, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __pyx_t_2 = NULL;
       if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_1))) {
@@ -5115,7 +5128,7 @@ static PyObject *__pyx_pf_6client_6setValueForKey(CYTHON_UNUSED PyObject *__pyx_
       }
       __pyx_t_10 = (__pyx_t_2) ? __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_2) : __Pyx_PyObject_CallNoArg(__pyx_t_1);
       __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-      if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 156, __pyx_L1_error)
+      if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 158, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_10);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
@@ -5304,14 +5317,14 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "client.pyx":154
+  /* "client.pyx":156
  *     except socket.error, msg:
  *         print "Exception. Returning empty"
  *         return -1, "\0"             # <<<<<<<<<<<<<<
  *     finally:
  *         sock.close()
  */
-  __pyx_tuple__5 = PyTuple_Pack(2, __pyx_int_neg_1, __pyx_kp_s__3); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __pyx_tuple__5 = PyTuple_Pack(2, __pyx_int_neg_1, __pyx_kp_s__3); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 156, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
 
