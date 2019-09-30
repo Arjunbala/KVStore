@@ -3,6 +3,7 @@ SERVER_DIR=$(cd `dirname $0` && pwd)
 SERVER_PORTS=""
 CONF_FILE="${SERVER_DIR}/KVStore.conf"
 LOG_DIR="${SERVER_DIR}/logs"
+RESTART=0
 
 # Set fonts for Help.
 NORM=`tput sgr0`
@@ -32,11 +33,14 @@ fi
 #Notice there is no ":" after "h". The leading ":" suppresses error messages from
 #getopts. This is required to get my unrecognized option code to work.
 
-while getopts :p:h FLAG; do
+while getopts :p:rh FLAG; do
   case $FLAG in
     p)
       SERVER_PORTS=$OPTARG
       echo "-s used: $OPTARG"
+      ;;
+    r)
+      RESTART=1
       ;;
     h)  #show help
       HELP
@@ -56,20 +60,25 @@ then
   HELP
 fi
 
-# Create the configuration file
+pushd $SERVER_DIR
 IFS=','; read -ra server_ports <<< "$SERVER_PORTS"
-if [ -e ${CONF_FILE} ]
+
+if [ $RESTART -eq 0 ]
 then
-  rm -vf ${CONF_FILE}
+  # Create the configuration file
+  if [ -e ${CONF_FILE} ]
+  then
+    rm -vf ${CONF_FILE}
+  fi
+  # Assign internal ports used for multicast communication
+  MULTICAST_PORT=4447
+  INTERNAL_PORT=9001
+  for server_port in "${server_ports[@]}"; do
+    echo "${server_port},${MULTICAST_PORT},${INTERNAL_PORT}" >> ${CONF_FILE}
+    MULTICAST_PORT=$((MULTICAST_PORT+1))
+    INTERNAL_PORT=$((INTERNAL_PORT+1))
+  done
 fi
-# Assign internal ports used for multicast communication
-MULTICAST_PORT=4447
-INTERNAL_PORT=9001
-for server_port in "${server_ports[@]}"; do
-  echo "${server_port},${MULTICAST_PORT},${INTERNAL_PORT}" >> ${CONF_FILE}
-  MULTICAST_PORT=$((MULTICAST_PORT+1))
-  INTERNAL_PORT=$((INTERNAL_PORT+1))
-done
 
 if [ ! -d "${LOG_DIR}" ]
 then
@@ -85,5 +94,7 @@ for server_port in "${server_ports[@]}"; do
   mvn exec:java -Dexec.mainClass="com.cs739.kvstore.KeyValueServer" -Dexec.args="${server_port} ${CONF_FILE}" > ${LOG_FILE} 2>&1 &
   sleep 2
 done
+
+popd
 
 exit 0
