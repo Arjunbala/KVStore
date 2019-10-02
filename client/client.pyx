@@ -16,7 +16,6 @@ cdef public int kv739_init(char **connection_servers, int num_servers):
     # Establish socket connection to each of the servers
     success = 0
     for i in range (0,num_servers):
-        #print ("Establishing connection to " + srvs[i])
         server = srvs[i][:]
         servers.append(server)
         try:
@@ -42,14 +41,12 @@ cdef public int kv739_shutdown():
 
 cdef public int kv739_get(char * key, char * value):
     status, val = getValueForKey(key, primary_server)
-    if status == 1:
-        strcpy(value, val)
+    strcpy(value, val)
     return status
 
 cdef public int kv739_put(char * key, char * value, char * old_value):
     status, oldval = setValueForKey(key,value, primary_server)
-    if status == 0:
-        strcpy(old_value, oldval)
+    strcpy(old_value, oldval)
     return status
 
 def cleanup(servers):
@@ -64,12 +61,11 @@ def get_value_worker(sock, queue, data, worker_num):
             json_response = json.loads(response)
             if json_response["status"] == "success":
                 queue.put(json_response["value"])
-                #print("Worker " + str(worker_num) + " got value: " + str(json_response["value"]))
     except socket.error, msg:
         print("Worker " + str(worker_num) + " failed to get a value!")
         print "Couldnt connect with the socket-server: "
     except ValueError:
-        print("Danish fucked us")
+        print("ValueError during get...")
     finally:
         sock.close()
 
@@ -105,7 +101,7 @@ def getValueForKey(key, primary_server):
                 value_count[value] = value_count[value] + 1
             else:
                 value_count[value] = 1
-        response_status = 1
+        response_status = 0
         max_count = -1
         max_value = ""
         for value, count in value_count.items():
@@ -115,6 +111,7 @@ def getValueForKey(key, primary_server):
         response_value = max_value
         if response_value is None:
             response_value = "\0"
+            response_status = 1
     return response_status, response_value
 
 def setValueForKey(key, value, primary_server):

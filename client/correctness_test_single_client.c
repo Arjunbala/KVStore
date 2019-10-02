@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
        gettimeofday(&tv1, NULL);
        for(int i=0;i<KVSTORE_SIZE;i++) {
            ret = kv739_get(keys[i], old_val);
-           assert(ret == 1); // there should be no failure
+           assert(ret == 0); // there should be no failure
            if(strcmp(old_val, values[i]) != 0) {
                errors++;
            }
